@@ -200,7 +200,7 @@ def submit_cell_report(user):
 def list_leaders(user):
     q = Leader.query
     if user.role != "bishop":
-        q = q.filter(Leader.branch_id == user.branch_id)
+        q = q.filter(or_(Leader.branch_id == user.branch_id, Leader.role == "Bishop"))
     return jsonify([leader_out(l) for l in q.order_by(Leader.active.desc(), Leader.id)])
 
 
