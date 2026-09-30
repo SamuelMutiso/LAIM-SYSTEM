@@ -402,7 +402,7 @@ route('post', '/cell-reports', ({ user, body }) => {
 })
 
 route('get', '/leaders', ({ user }) => {
-  const rows = user.role === 'bishop' ? db.leaders : db.leaders.filter((l) => l.branch_id === user.branch_id)
+  const rows = user.role === 'bishop' ? db.leaders : db.leaders.filter((l) => l.branch_id === user.branch_id || l.role === 'Bishop')
   return rows
 })
 route('post', '/leaders', ({ user, body }) => {
