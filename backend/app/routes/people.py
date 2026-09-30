@@ -200,7 +200,7 @@ def submit_cell_report(user):
 def list_leaders(user):
     q = Leader.query
     if user.role != "bishop":
-        q = q.filter(or_(Leader.scope == "church", Leader.branch_id == user.branch_id))
+        q = q.filter(Leader.branch_id == user.branch_id)
     return jsonify([leader_out(l) for l in q.order_by(Leader.active.desc(), Leader.id)])
 
 
@@ -234,5 +234,5 @@ def assign_leader(user):
 def worship_team(user):
     q = WorshipTeamMember.query.filter_by(active=True)
     if user.role != "bishop":
-        q = q.filter(or_(WorshipTeamMember.branch_id == user.branch_id, WorshipTeamMember.branch_id == HQ_BRANCH_ID))
+        q = q.filter(WorshipTeamMember.branch_id == user.branch_id)
     return jsonify([{"id": w.id, "member_id": w.member_id, "name": w.member.full_name, "phone": w.member.phone, "role": w.role, "part": w.part, "branch_id": w.branch_id} for w in q])

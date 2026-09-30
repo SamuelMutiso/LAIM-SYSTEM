@@ -118,3 +118,34 @@ def test_dashboard_and_exports(client):
     assert client.get("/api/exports/members.xlsx", headers=h).status_code == 200
     assert client.get("/api/exports/tithe-statement/1.pdf", headers=h).status_code == 200
     assert client.get("/api/audit", headers=login(client, "sec@t")).status_code == 403
+
+
+def test_hq_secretary_sees_only_hq(client):
+    from app.extensions import db
+    from app.models import Leader, Offering, WorshipTeamMember
+
+    with client.application.app_context():
+        db.session.add_all(
+            [
+                Leader(role="Pastor", member_id=3, branch_id=2, scope="branch"),
+                Leader(role="Bishop", member_id=1, branch_id=1, scope="church"),
+                WorshipTeamMember(member_id=3, branch_id=2, role="Drummer"),
+                WorshipTeamMember(member_id=1, branch_id=1, role="Keyboard"),
+                Offering(branch_id=2, date=last_sunday(), counts={}, cash_total=900, mpesa_total=0, bank_total=0),
+                Offering(branch_id=1, date=last_sunday(), counts={}, cash_total=500, mpesa_total=0, bank_total=0),
+            ]
+        )
+        db.session.commit()
+    hq = login(client, "sec@t")
+    kor = login(client, "pastor2@t")
+    for h, branch in ((hq, 1), (kor, 2)):
+        for url in ("/api/members", "/api/members?branch_id=2", "/api/members?branch_id=1", "/api/leaders", "/api/worship-team", "/api/offerings?branch_id=2", "/api/cells"):
+            rows = client.get(url, headers=h).json
+            assert rows, url
+            assert {r["branch_id"] for r in rows} == {branch}, (branch, url)
+    assert client.get("/api/members/3", headers=hq).status_code == 403
+    assert client.get("/api/members/1", headers=kor).status_code == 403
+    dash = client.get("/api/dashboard?branch_id=2", headers=hq).json
+    assert [b["branch_id"] for b in dash["by_branch"]] == [1]
+    bishop = client.get("/api/members", headers=login(client, "bishop@t")).json
+    assert {r["branch_id"] for r in bishop} == {1, 2}
