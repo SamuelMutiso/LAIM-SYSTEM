@@ -139,10 +139,18 @@ def test_hq_secretary_sees_only_hq(client):
     hq = login(client, "sec@t")
     kor = login(client, "pastor2@t")
     for h, branch in ((hq, 1), (kor, 2)):
-        for url in ("/api/members", "/api/members?branch_id=2", "/api/members?branch_id=1", "/api/leaders", "/api/worship-team", "/api/offerings?branch_id=2", "/api/cells"):
+        for url in ("/api/members", "/api/members?branch_id=2", "/api/members?branch_id=1", "/api/worship-team", "/api/offerings?branch_id=2", "/api/cells"):
             rows = client.get(url, headers=h).json
             assert rows, url
             assert {r["branch_id"] for r in rows} == {branch}, (branch, url)
+    kor_leaders = {(l["role"], l["branch_id"]) for l in client.get("/api/leaders", headers=kor).json}
+    assert kor_leaders == {("Pastor", 2), ("Bishop", 1)}
+    hq_leaders = {(l["role"], l["branch_id"]) for l in client.get("/api/leaders", headers=hq).json}
+    assert hq_leaders == {("Bishop", 1)}
+    member3 = {"first_name": "Peter", "last_name": "Sankale", "gender": "M", "dob": "1990-01-01"}
+    assert client.put("/api/members/3", json=member3, headers=hq).status_code == 403
+    pledge = client.post("/api/pledges", json={"member_id": 3, "amount": 1000, "due_date": "2027-01-01"}, headers=hq)
+    assert pledge.status_code == 403
     assert client.get("/api/members/3", headers=hq).status_code == 403
     assert client.get("/api/members/1", headers=kor).status_code == 403
     dash = client.get("/api/dashboard?branch_id=2", headers=hq).json
