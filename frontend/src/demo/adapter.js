@@ -402,7 +402,7 @@ route('post', '/cell-reports', ({ user, body }) => {
 })
 
 route('get', '/leaders', ({ user }) => {
-  const rows = user.role === 'bishop' ? db.leaders : db.leaders.filter((l) => l.scope === 'church' || l.branch_id === user.branch_id)
+  const rows = user.role === 'bishop' ? db.leaders : db.leaders.filter((l) => l.branch_id === user.branch_id)
   return rows
 })
 route('post', '/leaders', ({ user, body }) => {
@@ -422,7 +422,7 @@ route('post', '/leaders', ({ user, body }) => {
   log(user, 'Updated leadership', `${l.role}: ${l.name}`)
   return l
 })
-route('get', '/worship-team', ({ user }) => (user.role === 'bishop' ? db.worshipTeam : db.worshipTeam.filter((w) => w.branch_id === user.branch_id || w.branch_id === 1)))
+route('get', '/worship-team', ({ user }) => (user.role === 'bishop' ? db.worshipTeam : db.worshipTeam.filter((w) => w.branch_id === user.branch_id)))
 
 route('get', '/inventory', ({ user, q }) => {
   const branch = scopeBranch(user, q.branch_id)
