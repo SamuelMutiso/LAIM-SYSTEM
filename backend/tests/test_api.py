@@ -157,3 +157,33 @@ def test_hq_secretary_sees_only_hq(client):
     assert [b["branch_id"] for b in dash["by_branch"]] == [1]
     bishop = client.get("/api/members", headers=login(client, "bishop@t")).json
     assert {r["branch_id"] for r in bishop} == {1, 2}
+
+
+def test_account_locks_after_five_wrong_passwords(client):
+    from datetime import timedelta
+
+    from app.extensions import db
+    from app.models import User, utcnow
+
+    bad = {"email": "sec@t", "password": "wrong-password"}
+    for i in range(4):
+        r = client.post("/api/auth/login", json=bad)
+        assert r.status_code == 401 and f"{4 - i} attempt" in r.json["message"]
+    assert client.post("/api/auth/login", json=bad).status_code == 429
+    right = client.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"})
+    assert right.status_code == 429 and "Try again" in right.json["message"]
+    with client.application.app_context():
+        u = User.query.filter_by(email="sec@t").one()
+        u.locked_until = utcnow() - timedelta(minutes=1)
+        db.session.commit()
+    assert client.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"}).status_code == 200
+    r = client.post("/api/auth/login", json={"email": "nobody@t", "password": "x"})
+    assert r.status_code == 401 and r.json["message"] == "Email or password is incorrect."
+
+
+def test_security_headers(client):
+    r = client.get("/api/health")
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
+    assert r.headers["X-Frame-Options"] == "DENY"
+    assert r.headers["Cache-Control"] == "no-store"
+
