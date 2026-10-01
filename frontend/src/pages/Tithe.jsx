@@ -144,7 +144,7 @@ function TitheReports() {
 
           <div className="grid gap-6 xl:grid-cols-5">
             <Card className="xl:col-span-3">
-              <CardHeader title="Per member" subtitle="Click a name to see their statement" action={<SearchBox value={q} onChange={setQ} placeholder="Find member…" className="w-48" />} />
+              <CardHeader title="Per member" subtitle="Click a name to see their statement" action={<SearchBox value={q} onChange={setQ} placeholder="Find member…" className="w-full sm:w-48" />} />
               <div className="mt-3 max-h-[520px] overflow-auto scrollbar-thin">
                 <table className="w-full">
                   <thead className="sticky top-0 bg-white">

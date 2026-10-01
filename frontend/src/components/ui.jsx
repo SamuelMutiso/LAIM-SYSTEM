@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { AlertTriangle, Check, ChevronDown, Loader2, Search, X } from 'lucide-react'
@@ -42,8 +43,8 @@ export function Card({ className, children, ...p }) {
 
 export function CardHeader({ title, subtitle, action, className }) {
   return (
-    <div className={cx('flex items-start justify-between gap-3 px-5 pt-5', className)}>
-      <div>
+    <div className={cx('flex flex-wrap items-start justify-between gap-3 px-5 pt-5', className)}>
+      <div className="min-w-0">
         <h3 className="text-[15px] font-semibold text-ink-900">{title}</h3>
         {subtitle && <p className="mt-0.5 text-xs text-ink-500">{subtitle}</p>}
       </div>
@@ -180,7 +181,7 @@ export function Modal({ open, onClose, title, subtitle, children, footer, width 
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [open, onClose])
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -188,7 +189,7 @@ export function Modal({ open, onClose, title, subtitle, children, footer, width 
           <motion.div
             role="dialog"
             aria-modal="true"
-            className={cx('relative flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-white shadow-lift sm:rounded-3xl', width)}
+            className={cx('relative flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-white text-ink-900 shadow-lift sm:rounded-3xl', width)}
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 30, opacity: 0 }}
@@ -204,11 +205,12 @@ export function Modal({ open, onClose, title, subtitle, children, footer, width 
               </button>
             </div>
             <div className="overflow-y-auto px-6 py-5 scrollbar-thin">{children}</div>
-            {footer && <div className="flex justify-end gap-2 border-t border-ink-100 px-6 py-4">{footer}</div>}
+            {footer && <div className="pb-safe flex flex-wrap justify-end gap-2 border-t border-ink-100 px-6 py-4">{footer}</div>}
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }
 
@@ -323,7 +325,7 @@ export function Toasts() {
     return () => clearTimeout(t)
   }, [toasts, dispatch])
   return (
-    <div className="pointer-events-none fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2">
+    <div className="mb-safe pointer-events-none fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div
