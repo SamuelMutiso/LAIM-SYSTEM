@@ -33,6 +33,8 @@ class User(TimestampMixin, db.Model):
     cell_id = db.Column(db.Integer, db.ForeignKey("home_churches.id"))
     active = db.Column(db.Boolean, default=True, nullable=False)
     last_login_at = db.Column(db.DateTime(timezone=True))
+    failed_logins = db.Column(db.Integer, default=0, nullable=False, server_default="0")
+    locked_until = db.Column(db.DateTime(timezone=True))
 
     __table_args__ = (CheckConstraint("role in ('bishop','pastor','secretary','cell_leader')", name="ck_user_role"),)
 
