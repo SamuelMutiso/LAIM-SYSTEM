@@ -35,6 +35,32 @@ def register_cli(app):
         db.session.commit()
         click.echo(f"Created {role} {email}")
 
+    @app.cli.command("reset-password")
+    @click.argument("email")
+    @click.password_option()
+    def reset_password(email, password):
+        u = User.query.filter(db.func.lower(User.email) == email.strip().lower()).first()
+        if not u:
+            raise click.ClickException(f"No login with email {email}")
+        if len(password) < 10:
+            raise click.UsageError("Use a password of at least 10 characters.")
+        u.set_password(password)
+        u.failed_logins = 0
+        u.locked_until = None
+        db.session.commit()
+        click.echo(f"Password reset and account unlocked for {u.email}")
+
+    @app.cli.command("unlock")
+    @click.argument("email")
+    def unlock(email):
+        u = User.query.filter(db.func.lower(User.email) == email.strip().lower()).first()
+        if not u:
+            raise click.ClickException(f"No login with email {email}")
+        u.failed_logins = 0
+        u.locked_until = None
+        db.session.commit()
+        click.echo(f"Unlocked {u.email}")
+
     @app.cli.command("add-cell")
     @click.argument("name")
     @click.argument("area")
