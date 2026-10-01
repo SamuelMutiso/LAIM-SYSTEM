@@ -119,6 +119,11 @@ route('post', '/auth/login', ({ body }) => {
   return { access_token: `demo.${u.id}`, refresh_token: `demo-refresh.${u.id}`, user: u }
 })
 route('get', '/auth/me', ({ user }) => user)
+route('post', '/auth/password', ({ body }) => {
+  if (!body.current_password) throw new HttpError(422, 'Current password is wrong.', { field: 'current_password' })
+  if (String(body.new_password || '').length < 10) throw new HttpError(422, 'Use at least 10 characters.', { field: 'new_password' })
+  return { ok: true }
+})
 route('get', '/branches', () => BRANCHES)
 
 route('get', '/members', ({ user, q }) => {

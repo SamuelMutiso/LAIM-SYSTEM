@@ -8,6 +8,7 @@ const del = (url) => api.delete(url).then((r) => r.data)
 export const Auth = {
   login: (email, password) => post('/auth/login', { email, password }),
   me: () => get('/auth/me'),
+  changePassword: (body) => post('/auth/password', body),
 }
 
 export const Dashboard = { get: (params) => get('/dashboard', params) }
