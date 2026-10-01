@@ -1,0 +1,29 @@
+{
+  "name": "LAIM Office",
+  "short_name": "LAIM Office",
+  "description": "Lord's Altar Ministries International office system",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F7F5F0",
+  "theme_color": "#2D3191",
+  "icons": [
+    {
+      "src": "brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "brand/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
