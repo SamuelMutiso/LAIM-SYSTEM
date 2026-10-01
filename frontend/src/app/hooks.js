@@ -8,9 +8,13 @@ export function useApi(fn, deps = []) {
   const [state, setState] = useState({ data: null, loading: true, error: null })
   const fnRef = useRef(fn)
   fnRef.current = fn
+  const depsKey = JSON.stringify(deps)
+  const lastKey = useRef(depsKey)
   const load = useCallback(() => {
     let live = true
-    setState((s) => ({ ...s, loading: true, error: null }))
+    const sameQuery = lastKey.current === depsKey
+    lastKey.current = depsKey
+    setState((s) => (sameQuery && s.data !== null ? { ...s, error: null } : { data: null, loading: true, error: null }))
     fnRef
       .current()
       .then((data) => live && setState({ data, loading: false, error: null }))
@@ -19,7 +23,7 @@ export function useApi(fn, deps = []) {
       live = false
     }
 
-  }, [version, ...deps])
+  }, [version, depsKey])
   useEffect(load, [load])
   return { ...state, reload: load }
 }
