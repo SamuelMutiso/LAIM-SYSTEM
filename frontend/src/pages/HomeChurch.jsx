@@ -177,7 +177,7 @@ function OfficeView({ user }) {
           title="Thursday reports"
           subtitle="Newest first"
           action={
-            <div className="w-52">
+            <div className="w-full sm:w-52">
               <Select value={cellFilter} onChange={(e) => setCellFilter(e.target.value)} className="h-9 py-1.5" aria-label="Filter by home church">
                 <option value="">All home churches</option>
                 {cells.map((c) => (

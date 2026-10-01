@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BookOpenText,
@@ -9,6 +10,7 @@ import {
   Coins,
   HandCoins,
   Home,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -21,7 +23,8 @@ import {
 } from 'lucide-react'
 import { Wordmark, YoutubeIcon, FacebookIcon } from '../components/Brand'
 import { Avatar, Select } from '../components/ui'
-import { logout, setBranchFilter, setSidebar } from '../app/store'
+import { bumpData, logout, setBranchFilter, setSidebar } from '../app/store'
+import ChangePassword from '../components/ChangePassword'
 import { BRANCHES, ROLES, SOCIAL, branchById } from '../lib/constants'
 import { cx } from '../lib/utils'
 import api, { IS_DEMO, tokens } from '../api/client'
@@ -58,6 +61,7 @@ const NAV = [
 function SidebarContent({ user, onNavigate }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const [changingPassword, setChangingPassword] = useState(false)
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-altar-900 text-white">
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-flame-glow opacity-60" />
@@ -99,7 +103,7 @@ function SidebarContent({ user, onNavigate }) {
           )
         })}
       </nav>
-      <div className="relative border-t border-white/10 p-4">
+      <div className="pb-safe relative border-t border-white/10 p-4">
         <div className="mb-3 flex gap-2">
           <a href={SOCIAL.youtubeLive} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/5 py-2 text-xs font-semibold text-altar-100 hover:bg-white/10">
             <YoutubeIcon className="h-4 w-4 text-red-400" /> Live
@@ -117,6 +121,14 @@ function SidebarContent({ user, onNavigate }) {
             </div>
           </div>
           <button
+            onClick={() => setChangingPassword(true)}
+            className="rounded-lg p-2 text-altar-200 hover:bg-white/10 hover:text-white"
+            title="Change password"
+            aria-label="Change password"
+          >
+            <KeyRound className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => {
               if (!IS_DEMO) api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${tokens.get()?.access_token}` } }).catch(() => {})
               dispatch(logout())
@@ -130,8 +142,24 @@ function SidebarContent({ user, onNavigate }) {
           </button>
         </div>
       </div>
+      <ChangePassword open={changingPassword} onClose={() => setChangingPassword(false)} />
     </div>
   )
+}
+
+function useLiveRefresh() {
+  const dispatch = useDispatch()
+  useEffect(() => {
+    const refresh = () => document.visibilityState === 'visible' && dispatch(bumpData())
+    const timer = setInterval(refresh, 60000)
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('online', refresh)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('online', refresh)
+    }
+  }, [dispatch])
 }
 
 export default function AppLayout() {
@@ -140,6 +168,7 @@ export default function AppLayout() {
   const branchFilter = useSelector((s) => s.ui.branchFilter)
   const dispatch = useDispatch()
   const location = useLocation()
+  useLiveRefresh()
   const scopeLabel = user.role === 'bishop' ? (branchFilter ? branchById(branchFilter)?.name : 'All branches') : branchById(user.branch_id)?.name
 
   return (
@@ -158,7 +187,7 @@ export default function AppLayout() {
         )}
       </AnimatePresence>
 
-      <header className="sticky top-0 z-30 border-b border-ink-200/60 bg-linen/85 backdrop-blur-md">
+      <header className="pt-safe sticky top-0 z-30 border-b border-ink-200/60 bg-linen/85 backdrop-blur-md">
         {IS_DEMO && (
           <div className="bg-flame-400 px-4 py-1.5 text-center text-[11px] font-semibold text-altar-900">
             Preview with sample data — names, figures and home churches are examples. Changes reset when you refresh.
@@ -194,7 +223,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mb-safe px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <AnimatePresence mode="wait">
           <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
             <Outlet />
