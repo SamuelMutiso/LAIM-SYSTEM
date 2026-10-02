@@ -31,7 +31,7 @@ export default function Inventory() {
     })
     return m
   }, [items])
-  const rows = (items || []).filter((i) => (!cat || i.category === cat) && (!q || `${i.name} ${i.brand} ${i.custodian} ${i.serial_no}`.toLowerCase().includes(q.toLowerCase())))
+  const rows = (items || []).filter((i) => (!cat || i.category === cat) && (!q || `${i.name} ${i.brand} ${i.model} ${i.custodian} ${i.serial_no}`.toLowerCase().includes(q.toLowerCase())))
   const alerts = (items || []).filter((i) => ['Missing', 'Needs repair'].includes(i.condition))
   const open = (items || []).find((i) => i.id === openId)
 
@@ -40,6 +40,7 @@ export default function Inventory() {
       { label: 'Item', key: 'name' },
       { label: 'Category', key: 'category' },
       { label: 'Brand', key: 'brand' },
+      { label: 'Model', key: 'model' },
       { label: 'Serial no.', key: 'serial_no' },
       { label: 'Quantity', key: 'quantity' },
       { label: 'Condition', key: 'condition' },
@@ -135,7 +136,7 @@ export default function Inventory() {
                     <td className="td">
                       <div className="font-semibold text-ink-900">{i.name}</div>
                       <div className="text-xs text-ink-500">
-                        {i.brand}
+                        {[i.brand, i.model].filter(Boolean).join(' ')}
                         {i.serial_no && <span className="num"> · {i.serial_no}</span>}
                       </div>
                     </td>
@@ -187,7 +188,7 @@ function ItemDetail({ item, canWrite, onClose, onEdit }) {
       open={!!item}
       onClose={onClose}
       title={item?.name}
-      subtitle={item ? `${item.category} · ${item.brand}` : ''}
+      subtitle={item ? [item.category, [item.brand, item.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ') : ''}
       width="max-w-xl"
       footer={
         canWrite && (
@@ -298,6 +299,9 @@ function ItemForm({ item, onClose }) {
         </Field>
         <Field label="Brand">
           <Input {...register('brand')} />
+        </Field>
+        <Field label="Model">
+          <Input {...register('model')} placeholder="e.g. Motif ES8" />
         </Field>
         <Field label="Serial number">
           <Input className="num" {...register('serial_no')} />
