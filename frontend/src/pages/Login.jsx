@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -28,35 +28,6 @@ function Chevrons({ className }) {
   )
 }
 
-const PHOTOS = [
-  { name: 'stage', alt: "The stage at Lord's Altar Ministries International", pos: '50% 62%' },
-  { name: 'band', alt: 'The praise team leading worship', pos: '62% 50%' },
-  { name: 'pulpit', alt: 'The Bishop preaching with the praise team', pos: '45% 40%' },
-  { name: 'pulpit-wide', alt: 'The Bishop at the pulpit during the Passover Convention', pos: '50% 40%' },
-]
-
-function StagePhotos() {
-  const [index, setIndex] = useState(0)
-  useEffect(() => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
-    const t = setInterval(() => setIndex((i) => (i + 1) % PHOTOS.length), 8000)
-    return () => clearInterval(t)
-  }, [])
-  return PHOTOS.map((p, i) => (
-    <img
-      key={p.name}
-      src={asset(`brand/${p.name}.jpg`)}
-      srcSet={`${asset(`brand/${p.name}-sm.jpg`)} 700w, ${asset(`brand/${p.name}.jpg`)} 1500w`}
-      sizes="(min-width:1024px) 56vw, 100vw"
-      alt={i === index ? p.alt : ''}
-      aria-hidden={i !== index}
-      loading={i === 0 ? 'eager' : 'lazy'}
-      style={{ objectPosition: p.pos }}
-      className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1500ms] ease-in-out ${i === index ? 'opacity-100' : 'opacity-0'}`}
-    />
-  ))
-}
-
 export default function Login() {
   const dispatch = useDispatch()
   const { user, status, error } = useSelector((s) => s.auth)
@@ -74,7 +45,7 @@ export default function Login() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-altar-900 lg:grid lg:grid-cols-[1.25fr_1fr]">
       <section className="relative h-72 overflow-hidden sm:h-80 lg:h-auto lg:min-h-screen">
-        <StagePhotos />
+        <img src={asset('brand/stage.jpg')} srcSet={`${asset('brand/stage-sm.jpg')} 700w, ${asset('brand/stage.jpg')} 1500w`} sizes="(min-width:1024px) 56vw, 100vw" alt="The stage at Lord's Altar Ministries International" className="absolute inset-x-0 bottom-0 h-[130%] w-full object-cover object-[60%_100%]" />
         <div className="absolute inset-0 bg-gradient-to-t from-altar-950 via-altar-900/55 to-altar-900/10" />
         <div className="absolute inset-0 bg-gradient-to-r from-altar-950/70 via-transparent to-transparent" />
         <div className="absolute inset-0 mix-blend-soft-light" style={{ background: 'radial-gradient(ellipse at 85% 30%, rgba(139,92,246,.55), transparent 55%), radial-gradient(ellipse at 20% 90%, rgba(242,200,17,.45), transparent 55%)' }} />
