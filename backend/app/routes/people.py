@@ -134,13 +134,54 @@ def list_cells(user):
 def create_cell(user):
     body = request.get_json(silent=True) or {}
     name, area = (body.get("name") or "").strip(), (body.get("area") or "").strip()
-    if not name or not area:
-        raise ApiError(422, "Name and area are required.")
-    c = HomeChurch(branch_id=user.branch_id, name=name, area=area, venue=body.get("venue", ""), leader_member_id=body.get("leader_member_id"), assistant_member_id=body.get("assistant_member_id"))
+    if not name:
+        raise ApiError(422, "Give the home church a name.", "name")
+    if not area:
+        raise ApiError(422, "Enter the area where it meets.", "area")
+    if HomeChurch.query.filter(HomeChurch.branch_id == user.branch_id, db.func.lower(HomeChurch.name) == name.lower()).first():
+        raise ApiError(409, "Your branch already has a home church with that name.", "name")
+    people = {}
+    for key in ("leader_member_id", "assistant_member_id"):
+        mid = body.get(key) or None
+        if mid:
+            m = db.session.get(Member, int(mid))
+            if not m or m.branch_id != user.branch_id:
+                raise ApiError(422, "Choose someone from your branch.", key)
+        people[key] = int(mid) if mid else None
+    c = HomeChurch(branch_id=user.branch_id, name=name, area=area, venue=(body.get("venue") or "").strip(), meeting_time=(body.get("meeting_time") or "6:00 PM").strip(), **people)
     db.session.add(c)
     audit(user, "Added home church", name)
     db.session.commit()
-    return jsonify({"id": c.id}), 201
+    return jsonify({"id": c.id, "name": c.name}), 201
+
+
+@api.put("/cells/<int:cid>")
+@login_required("secretary")
+def update_cell(user, cid):
+    c = db.get_or_404(HomeChurch, cid)
+    require_write(user, c.branch_id)
+    body = request.get_json(silent=True) or {}
+    name, area = (body.get("name") or "").strip(), (body.get("area") or "").strip()
+    if not name:
+        raise ApiError(422, "Give the home church a name.", "name")
+    if not area:
+        raise ApiError(422, "Enter the area where it meets.", "area")
+    clash = HomeChurch.query.filter(HomeChurch.branch_id == c.branch_id, HomeChurch.id != c.id, db.func.lower(HomeChurch.name) == name.lower()).first()
+    if clash:
+        raise ApiError(409, "Your branch already has a home church with that name.", "name")
+    for key in ("leader_member_id", "assistant_member_id"):
+        mid = body.get(key) or None
+        if mid:
+            m = db.session.get(Member, int(mid))
+            if not m or m.branch_id != c.branch_id:
+                raise ApiError(422, "Choose someone from your branch.", key)
+        setattr(c, key, int(mid) if mid else None)
+    c.name, c.area = name, area
+    c.venue = (body.get("venue") or "").strip()
+    c.meeting_time = (body.get("meeting_time") or c.meeting_time or "6:00 PM").strip()
+    audit(user, "Updated home church", name)
+    db.session.commit()
+    return jsonify({"id": c.id, "name": c.name})
 
 
 @api.get("/cells/<int:cid>/roster")

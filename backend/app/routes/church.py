@@ -105,7 +105,8 @@ def dashboard(user):
     active = [m for m in members if m.membership_status == "Active"]
     groups = {}
     for m in active:
-        groups[m.group] = groups.get(m.group, 0) + 1
+        key = m.group or "unknown"
+        groups[key] = groups.get(key, 0) + 1
 
     ms, me = _month_bounds(today)
     ps, pe = _month_bounds(ms - timedelta(days=1))
@@ -146,7 +147,7 @@ def dashboard(user):
     birthdays = [
         {"id": m.id, "name": m.full_name, "dob": d(m.dob), "branch_id": m.branch_id, "group": m.group}
         for m in active
-        if 0 <= (next_birthday(m) - today).days <= 7
+        if m.dob and 0 <= (next_birthday(m) - today).days <= 7
     ]
     branches = Branch.query.order_by(Branch.id).all()
     return jsonify(
@@ -169,7 +170,7 @@ def dashboard(user):
                 "overdue": sum(1 for p in pledges if p.status == "Overdue"),
             },
             "building_fund_raised": money(sum((g.amount for g in gifts), start=Decimal(0)) + sum((p.paid for p in pledges), start=Decimal(0))),
-            "building_fund_target": fund_target() or 1,
+            "building_fund_target": fund_target(),
             "home_church": {
                 "date": d(last_thu),
                 "submitted": len(week),
