@@ -5,7 +5,7 @@ services:
     rootDir: backend
     branch: main
     region: frankfurt
-    plan: starter
+    plan: free
     buildCommand: pip install --upgrade pip pipenv && pipenv requirements > /tmp/requirements.txt && pip install -r /tmp/requirements.txt && flask db upgrade && flask setup
     startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /api/health
@@ -21,10 +21,7 @@ services:
           name: laim-office-db
           property: connectionString
       - key: RATELIMIT_STORAGE_URI
-        fromService:
-          type: keyvalue
-          name: laim-office-limits
-          property: connectionString
+        value: memory://
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY
@@ -32,16 +29,9 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
-  - type: keyvalue
-    name: laim-office-limits
-    region: frankfurt
-    plan: free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
-
 databases:
   - name: laim-office-db
     region: frankfurt
-    plan: basic-256mb
+    plan: free
     databaseName: laim_office
     user: laim
