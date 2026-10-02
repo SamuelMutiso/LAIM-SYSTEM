@@ -79,7 +79,7 @@ class Member(TimestampMixin, db.Model):
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
     gender = db.Column(db.String(1), nullable=False)
-    dob = db.Column(db.Date, nullable=False)
+    dob = db.Column(db.Date)
     phone = db.Column(db.String(20), default="", index=True)
     email = db.Column(db.String(160), default="")
     residence = db.Column(db.String(160), default="")

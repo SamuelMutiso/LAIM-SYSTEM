@@ -27,6 +27,7 @@ class Config:
     CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
     FRONTEND_DIST = os.getenv("FRONTEND_DIST", "")
     BUILDING_FUND_TARGET = int(os.getenv("BUILDING_FUND_TARGET", "0") or 0)
+    TRUST_PROXY = os.getenv("TRUST_PROXY", "") == "1"
 
 
 class TestConfig(Config):

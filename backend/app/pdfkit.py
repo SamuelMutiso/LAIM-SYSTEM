@@ -65,7 +65,7 @@ class Sheet:
         c.drawString(tx, self.y - 7 * mm, "LORD’S ALTAR MINISTRIES INTERNATIONAL")
         c.setFont("Manrope-Semi", 8)
         c.setFillColor(SCRIPTURE)
-        c.drawString(tx, self.y - 11.5 * mm, self.church_line or "LEVITICUS 6:13  ·  LAIM HQ  ·  KORROMPOI  ·  MILIMANI  ·  MATUU")
+        c.drawString(tx, self.y - 11.5 * mm, self.church_line or "LEVITICUS 6:13  ·  LAIM HQ  ·  KORROMPOI  ·  MILIMANI  ·  MATUU  ·  NOONKOPIR")
         self.y -= lh + 3 * mm
         c.setStrokeColor(FLAME)
         c.setLineWidth(2)

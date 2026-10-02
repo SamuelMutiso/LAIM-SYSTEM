@@ -187,3 +187,54 @@ def test_security_headers(client):
     assert r.headers["X-Frame-Options"] == "DENY"
     assert r.headers["Cache-Control"] == "no-store"
 
+
+
+def test_bootstrap_creates_clean_start(client):
+    from app.extensions import db
+    from app.models import Branch, HomeChurch, Leader, Member, User
+
+    app = client.application
+    User.query.delete()
+    db.session.commit()
+    db.session.expunge_all()
+    result = app.test_cli_runner().invoke(args=["bootstrap", "--bishop-phone", "0712 345 678", "--cells", "5"])
+    assert result.exit_code == 0, result.output
+    with app.app_context():
+        assert db.session.get(Branch, 5).name == "Lord's Altar Noonkopir"
+        roles = sorted(u.role for u in User.query)
+        assert roles == ["bishop", "cell_leader", "cell_leader", "cell_leader", "cell_leader", "cell_leader", "secretary"]
+        assert HomeChurch.query.filter(HomeChurch.name.like("Home Church %")).count() == 5
+        bishop = Leader.query.filter_by(role="Bishop").one()
+        assert db.session.get(Member, bishop.member_id).phone == "0712345678"
+    line = next(l for l in result.output.splitlines() if "secretary.hq@laim.church" in l)
+    password = line.split()[1]
+    assert client.post("/api/auth/login", json={"email": "secretary.hq@laim.church", "password": password}).status_code == 200
+    again = app.test_cli_runner().invoke(args=["bootstrap", "--bishop-phone", ""])
+    assert "Nothing new to create." in again.output
+
+
+def test_secretary_adds_and_edits_home_church(client):
+    hq = login(client, "sec@t")
+    r = client.post("/api/cells", json={"name": "Neema", "area": "Kitengela", "leader_member_id": 1}, headers=hq)
+    assert r.status_code == 201
+    cid = r.json["id"]
+    assert client.post("/api/cells", json={"name": "neema", "area": "X"}, headers=hq).status_code == 409
+    assert client.post("/api/cells", json={"name": "Other", "area": "X", "leader_member_id": 3}, headers=hq).status_code == 422
+    assert client.put(f"/api/cells/{cid}", json={"name": "Neema Cell", "area": "Kitengela East"}, headers=hq).status_code == 200
+    names = [c["name"] for c in client.get("/api/cells", headers=hq).json]
+    assert "Neema Cell" in names
+    assert client.post("/api/cells", json={"name": "X", "area": "Y"}, headers=login(client, "pastor2@t")).status_code == 403
+    member = {"first_name": "No", "last_name": "Birthday", "gender": "F", "marital_status": "Single"}
+    assert client.post("/api/members", json=member, headers=hq).status_code == 422
+
+
+def test_member_without_birth_date_does_not_break_pages(client):
+    from app.extensions import db
+    from app.models import Member
+
+    db.session.add(Member(branch_id=1, title="Bishop Dr.", first_name="Donald", last_name="Mutiso", gender="M"))
+    db.session.commit()
+    h = login(client, "bishop@t")
+    for url in ("/api/dashboard", "/api/members", "/api/exports/members.xlsx", "/api/cells"):
+        assert client.get(url, headers=h).status_code == 200, url
+

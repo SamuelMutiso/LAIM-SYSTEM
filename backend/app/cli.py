@@ -1,27 +1,94 @@
-import random
-from datetime import date, timedelta
+import secrets
 
 import click
 
-from .constants import BRANCHES, ROLES
+from .constants import BRANCHES, HQ_BRANCH_ID, ROLES
 from .extensions import db
-from .models import Branch, CellReport, HomeChurch, InventoryItem, Leader, Member, Offering, Pledge, PledgePayment, Tithe, User
+from .models import Branch, HomeChurch, Leader, Member, User
+
+BRANCH_HELP = ", ".join(f"{bid} {name}" for bid, _, name in BRANCHES)
+
+
+def ensure_branches():
+    for bid, code, name in BRANCHES:
+        b = db.session.get(Branch, bid)
+        if not b:
+            db.session.add(Branch(id=bid, code=code, name=name))
+        elif b.name != name or b.code != code:
+            b.name, b.code = name, code
+    db.session.commit()
+
+
+def new_password():
+    return secrets.token_urlsafe(9)
+
+
+def find_user(email):
+    return User.query.filter(db.func.lower(User.email) == email.strip().lower()).first()
 
 
 def register_cli(app):
     @app.cli.command("setup")
     def setup():
-        for bid, code, name in BRANCHES:
-            if not db.session.get(Branch, bid):
-                db.session.add(Branch(id=bid, code=code, name=name))
-        db.session.commit()
+        ensure_branches()
         click.echo("Branches ready: " + ", ".join(n for _, _, n in BRANCHES))
+
+    @app.cli.command("bootstrap")
+    @click.option("--domain", default="laim.church", show_default=True, help="Ending used for the login emails")
+    @click.option("--bishop-phone", prompt="Bishop's phone (leave blank to add later)", default="", show_default=False)
+    @click.option("--cells", default=5, show_default=True, help="How many HQ home churches to create")
+    def bootstrap(domain, bishop_phone, cells):
+        ensure_branches()
+        created = []
+
+        def add_user(email, name, role, branch_id, cell_id=None):
+            if find_user(email):
+                click.echo(f"Skipped {email} (already exists)")
+                return
+            password = new_password()
+            u = User(email=email, name=name, role=role, branch_id=branch_id, cell_id=cell_id)
+            u.set_password(password)
+            db.session.add(u)
+            created.append((name, email, password))
+
+        bishop = Member.query.filter_by(first_name="Donald", last_name="Mutiso", branch_id=HQ_BRANCH_ID).first()
+        if not bishop:
+            bishop = Member(branch_id=HQ_BRANCH_ID, title="Bishop Dr.", first_name="Donald", last_name="Mutiso", gender="M", phone=bishop_phone.replace(" ", ""))
+            db.session.add(bishop)
+            db.session.flush()
+        if not Leader.query.filter_by(role="Bishop", active=True).first():
+            db.session.add(Leader(role="Bishop", member_id=bishop.id, branch_id=HQ_BRANCH_ID, scope="church", group="Leadership"))
+
+        add_user(f"bishop@{domain}", "Bishop Dr. Donald Mutiso", "bishop", HQ_BRANCH_ID)
+        add_user(f"secretary.hq@{domain}", "Secretary — HQ", "secretary", HQ_BRANCH_ID)
+
+        for n in range(1, cells + 1):
+            name = f"Home Church {n}"
+            cell = HomeChurch.query.filter_by(branch_id=HQ_BRANCH_ID, name=name).first()
+            if not cell:
+                cell = HomeChurch(branch_id=HQ_BRANCH_ID, name=name, area="")
+                db.session.add(cell)
+                db.session.flush()
+            add_user(f"hq.homechurch{n}@{domain}", f"{name} Leader", "cell_leader", HQ_BRANCH_ID, cell.id)
+
+        db.session.commit()
+        if not created:
+            click.echo("Nothing new to create.")
+            return
+        click.echo("")
+        click.echo("New logins. Save these now: the passwords are not stored anywhere and will not be shown again.")
+        click.echo("")
+        width = max(len(e) for _, e, _ in created)
+        for name, email, password in created:
+            click.echo(f"  {email.ljust(width)}  {password}   {name}")
+        click.echo("")
+        click.echo("Each person should change their password after signing in (key button next to Sign out).")
 
     @app.cli.command("create-user")
     @click.option("--email", prompt=True)
     @click.option("--name", prompt=True)
     @click.option("--role", prompt=True, type=click.Choice(ROLES))
-    @click.option("--branch", "branch_id", prompt="Branch id (1 HQ, 2 Korrompoi, 3 Milimani, 4 Matuu)", type=int)
+    @click.option("--branch", "branch_id", prompt=f"Branch id ({BRANCH_HELP})", type=int)
     @click.option("--cell", "cell_id", default=None, type=int, help="Home church id (cell leaders only)")
     @click.password_option()
     def create_user(email, name, role, branch_id, cell_id, password):
@@ -29,6 +96,8 @@ def register_cli(app):
             raise click.UsageError("Cell leaders need --cell (the home church id).")
         if len(password) < 10:
             raise click.UsageError("Use a password of at least 10 characters.")
+        if find_user(email):
+            raise click.ClickException(f"{email} already has a login.")
         u = User(email=email.strip().lower(), name=name, role=role, branch_id=branch_id, cell_id=cell_id)
         u.set_password(password)
         db.session.add(u)
@@ -39,7 +108,7 @@ def register_cli(app):
     @click.argument("email")
     @click.password_option()
     def reset_password(email, password):
-        u = User.query.filter(db.func.lower(User.email) == email.strip().lower()).first()
+        u = find_user(email)
         if not u:
             raise click.ClickException(f"No login with email {email}")
         if len(password) < 10:
@@ -53,7 +122,7 @@ def register_cli(app):
     @app.cli.command("unlock")
     @click.argument("email")
     def unlock(email):
-        u = User.query.filter(db.func.lower(User.email) == email.strip().lower()).first()
+        u = find_user(email)
         if not u:
             raise click.ClickException(f"No login with email {email}")
         u.failed_logins = 0
@@ -61,86 +130,18 @@ def register_cli(app):
         db.session.commit()
         click.echo(f"Unlocked {u.email}")
 
+    @app.cli.command("list-users")
+    def list_users():
+        for u in User.query.order_by(User.branch_id, User.role, User.email):
+            branch = db.session.get(Branch, u.branch_id)
+            click.echo(f"{u.email:<36} {u.role:<12} {branch.name if branch else u.branch_id}{'' if u.active else '  (disabled)'}")
+
     @app.cli.command("add-cell")
     @click.argument("name")
     @click.argument("area")
-    @click.option("-b", "--branch", "branch_id", type=int, required=True)
+    @click.option("-b", "--branch", "branch_id", type=int, required=True, help=BRANCH_HELP)
     def add_cell(name, area, branch_id):
         c = HomeChurch(name=name, area=area, branch_id=branch_id)
         db.session.add(c)
         db.session.commit()
         click.echo(f"Home church '{name}' created with id {c.id}")
-
-    @app.cli.command("seed-demo")
-    def seed_demo():
-        if Member.query.first():
-            raise click.ClickException("Database already has members — not seeding.")
-        rnd = random.Random(613)
-        setup.callback()
-        today = date.today()
-        firsts_m = ["John", "Peter", "Samuel", "David", "Joseph", "Daniel", "Stephen", "Paul", "Brian", "Kevin", "Moses", "Isaac"]
-        firsts_f = ["Mary", "Grace", "Faith", "Esther", "Ruth", "Mercy", "Joyce", "Lucy", "Janet", "Purity", "Naomi", "Lydia"]
-        lasts = ["Mutiso", "Mwangi", "Kilonzo", "Musyoka", "Mutua", "Nzioka", "Wambua", "Kioko", "Sankale", "Koikai", "Kimani", "Mbithi"]
-        cells = {}
-        for bid, names in {1: ["Acacia", "Baraka", "Neema"], 2: ["Tumaini"], 3: ["Shalom"], 4: ["Rehoboth"]}.items():
-            for n in names:
-                c = HomeChurch(branch_id=bid, name=n, area=n)
-                db.session.add(c)
-                cells.setdefault(bid, []).append(c)
-        db.session.flush()
-        bishop = Member(branch_id=1, title="Bishop Dr.", first_name="Donald", last_name="Mutiso", gender="M", dob=date(1964, 3, 2), marital_status="Married", home_church_id=cells[1][0].id)
-        db.session.add(bishop)
-        members = [bishop]
-        for bid, size in {1: 60, 2: 20, 3: 18, 4: 22}.items():
-            for _ in range(size):
-                g = rnd.choice("MF")
-                age = rnd.choice([rnd.randint(2, 12), rnd.randint(13, 19), rnd.randint(20, 24), rnd.randint(25, 70), rnd.randint(28, 65)])
-                m = Member(
-                    branch_id=bid,
-                    home_church_id=rnd.choice(cells[bid]).id,
-                    first_name=rnd.choice(firsts_f if g == "F" else firsts_m),
-                    last_name=rnd.choice(lasts),
-                    gender=g,
-                    dob=date(today.year - age, rnd.randint(1, 12), rnd.randint(1, 28)),
-                    phone=f"07{rnd.randint(10000000, 99999999)}" if age >= 16 else "",
-                    marital_status="Married" if age > 27 and rnd.random() < 0.6 else "Single",
-                    residence=rnd.choice(["Kitengela", "Isinya", "Kajiado", "Matuu"]),
-                    salvation_date=today - timedelta(days=rnd.randint(10, 3000)) if age > 10 else None,
-                )
-                db.session.add(m)
-                members.append(m)
-        db.session.flush()
-        db.session.add(Leader(role="Bishop", member_id=bishop.id, branch_id=1, scope="church", since=date(2008, 3, 2)))
-        for m in [x for x in members if x.age and x.age >= 20]:
-            if rnd.random() < 0.6:
-                for mo in range(1, today.month + 1):
-                    d0 = date(today.year, mo, 1)
-                    sunday = d0 + timedelta(days=(6 - d0.weekday()) % 7)
-                    if sunday <= today:
-                        db.session.add(Tithe(member_id=m.id, branch_id=m.branch_id, date=sunday, amount=rnd.choice([200, 500, 1000, 2000]), method="cash"))
-        d0 = today - timedelta(days=(today.weekday() + 1) % 7)
-        for w in range(8):
-            for bid in (1, 2, 3, 4):
-                counts = {str(v): rnd.randint(0, 20) for v in (1000, 500, 200, 100, 50, 20, 10, 5, 1)}
-                db.session.add(Offering(branch_id=bid, date=d0 - timedelta(weeks=w), counts=counts, cash_total=sum(int(k) * n for k, n in counts.items()), mpesa_total=rnd.randint(1000, 8000)))
-        for m in rnd.sample([x for x in members if x.age and x.age >= 25], 10):
-            p = Pledge(member_id=m.id, branch_id=m.branch_id, amount=rnd.choice([5000, 10000, 20000]), pledged_on=today - timedelta(days=90), due_date=today + timedelta(days=rnd.choice([-10, 60, 180])))
-            p.payments.append(PledgePayment(date=today - timedelta(days=30), amount=1000, method="cash"))
-            db.session.add(p)
-        for bid in (1, 2, 3, 4):
-            db.session.add(InventoryItem(branch_id=bid, category="Microphones", name="Wired Vocal Mic", brand="Shure", quantity=4, last_checked=today))
-        thu = today - timedelta(days=(today.weekday() - 3) % 7)
-        for bid, cs in cells.items():
-            for c in cs:
-                db.session.add(CellReport(cell_id=c.id, branch_id=bid, date=thu, adults=["Sample Adult"], children=[], visitors=1, offering=300, signed_by="Leader"))
-        for email, name, role, bid, cell in [
-            ("bishop@laim.church", "Bishop Dr. Donald Mutiso", "bishop", 1, None),
-            ("secretary.hq@laim.church", "Secretary — HQ", "secretary", 1, None),
-            ("pastor.korrompoi@laim.church", "Pastor — Korrompoi", "pastor", 2, None),
-            ("acacia@laim.church", "Acacia Leader", "cell_leader", 1, cells[1][0].id),
-        ]:
-            u = User(email=email, name=name, role=role, branch_id=bid, cell_id=cell)
-            u.set_password("demo-password-123")
-            db.session.add(u)
-        db.session.commit()
-        click.echo("Sample data loaded. Demo logins use password: demo-password-123 (change or delete before going live).")

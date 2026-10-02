@@ -7,7 +7,7 @@ from reportlab.pdfgen import canvas
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.pdfkit import ALTAR, FLAME, INK, INK_SOFT, LINE, MARGIN, PAGE_H, PAGE_W, SCRIPTURE, Sheet
 
-BRANCHES = ["LAIM HQ", "Korrompoi", "Milimani", "Matuu"]
+BRANCHES = ["LAIM HQ", "Korrompoi", "Milimani", "Matuu", "Noonkopir"]
 
 
 def home_church_report(c):

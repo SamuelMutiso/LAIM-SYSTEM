@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import PyJWTError
 from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config
 from .extensions import bcrypt, cors, db, jwt, limiter, migrate
@@ -13,6 +14,8 @@ from .security import ApiError
 def create_app(config=Config):
     app = Flask(__name__, static_folder=None)
     app.config.from_object(config)
+    if app.config.get("TRUST_PROXY"):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     db.init_app(app)
     migrate.init_app(app, db)

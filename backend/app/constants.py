@@ -3,6 +3,7 @@ BRANCHES = [
     (2, "KOR", "Lord's Altar Korrompoi"),
     (3, "MIL", "Lord's Altar Milimani"),
     (4, "MAT", "Lord's Altar Matuu"),
+    (5, "NKP", "Lord's Altar Noonkopir"),
 ]
 HQ_BRANCH_ID = 1
 
