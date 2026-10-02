@@ -3,6 +3,7 @@ export const BRANCHES = [
   { id: 2, code: 'KOR', name: "Lord's Altar Korrompoi", short: 'Korrompoi', color: '#C78A10' },
   { id: 3, code: 'MIL', name: "Lord's Altar Milimani", short: 'Milimani', color: '#A5446A' },
   { id: 4, code: 'MAT', name: "Lord's Altar Matuu", short: 'Matuu', color: '#5AA9D6' },
+  { id: 5, code: 'NKP', name: "Lord's Altar Noonkopir", short: 'Noonkopir', color: '#2E9C6A' },
 ]
 
 export const branchById = (id) => BRANCHES.find((b) => b.id === Number(id))

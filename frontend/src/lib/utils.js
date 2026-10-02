@@ -60,4 +60,4 @@ export function downloadCSV(filename, rows, columns) {
 
 export const asset = (p) => `${import.meta.env.BASE_URL}${p.replace(/^\//, '')}`
 
-export const today = () => (import.meta.env.VITE_DEMO === 'true' ? new Date(2026, 8, 29) : new Date())
+export const today = () => new Date()

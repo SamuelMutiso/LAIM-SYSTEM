@@ -46,6 +46,8 @@ export const HomeChurch = {
   roster: (id) => get(`/cells/${id}/roster`),
   reports: (params) => get('/cell-reports', params),
   submit: (body) => post('/cell-reports', body),
+  addCell: (body) => post('/cells', body),
+  updateCell: (id, body) => put(`/cells/${id}`, body),
 }
 
 export const Leaders = {

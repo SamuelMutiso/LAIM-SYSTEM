@@ -27,7 +27,7 @@ import { bumpData, logout, setBranchFilter, setSidebar } from '../app/store'
 import ChangePassword from '../components/ChangePassword'
 import { BRANCHES, ROLES, SOCIAL, branchById } from '../lib/constants'
 import { cx } from '../lib/utils'
-import api, { IS_DEMO, tokens } from '../api/client'
+import api, { tokens } from '../api/client'
 
 const NAV = [
   { section: 'Overview', items: [{ to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['bishop', 'pastor', 'secretary'] }] },
@@ -130,7 +130,7 @@ function SidebarContent({ user, onNavigate }) {
           </button>
           <button
             onClick={() => {
-              if (!IS_DEMO) api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${tokens.get()?.access_token}` } }).catch(() => {})
+              api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${tokens.get()?.access_token}` } }).catch(() => {})
               dispatch(logout())
               navigate('/login')
             }}
@@ -188,11 +188,6 @@ export default function AppLayout() {
       </AnimatePresence>
 
       <header className="pt-safe sticky top-0 z-30 border-b border-ink-200/60 bg-linen/85 backdrop-blur-md">
-        {IS_DEMO && (
-          <div className="bg-flame-400 px-4 py-1.5 text-center text-[11px] font-semibold text-altar-900">
-            Preview with sample data — names, figures and home churches are examples. Changes reset when you refresh.
-          </div>
-        )}
         <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
           <button className="rounded-xl p-2 text-ink-700 hover:bg-ink-100 lg:hidden" onClick={() => dispatch(setSidebar(true))} aria-label="Open menu">
             <Menu className="h-5 w-5" />

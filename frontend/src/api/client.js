@@ -1,7 +1,5 @@
 import axios from 'axios'
 
-export const IS_DEMO = import.meta.env.VITE_DEMO === 'true'
-
 const TOKEN_KEY = 'laim.tokens'
 const store = {
   get() {
@@ -31,12 +29,9 @@ export const tokens = {
   },
 }
 
-const api = axios.create({ baseURL: '/api', timeout: 20000 })
+export const API_BASE = `${(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')}/api`
 
-if (IS_DEMO) {
-  const { default: demoAdapter } = await import('../demo/adapter.js')
-  api.defaults.adapter = demoAdapter
-}
+const api = axios.create({ baseURL: API_BASE, timeout: 30000 })
 
 api.interceptors.request.use((config) => {
   const t = tokens.get()
@@ -58,7 +53,7 @@ api.interceptors.response.use(
       original._retry = true
       try {
         refreshing ||= axios
-          .post('/api/auth/refresh', null, { headers: { Authorization: `Bearer ${t.refresh_token}` } })
+          .post(`${API_BASE}/auth/refresh`, null, { headers: { Authorization: `Bearer ${t.refresh_token}` } })
           .then((r) => tokens.set({ ...t, access_token: r.data.access_token }))
           .finally(() => (refreshing = null))
         await refreshing

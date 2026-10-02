@@ -6,16 +6,9 @@ import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { login } from '../app/store'
 import { LogoMark } from '../components/Brand'
 import { Button, ErrorNote } from '../components/ui'
-import { IS_DEMO } from '../api/client'
-import { ROLES } from '../lib/constants'
-import { asset, cx } from '../lib/utils'
+import { BRANCHES } from '../lib/constants'
+import { asset } from '../lib/utils'
 
-const DEMO_ACCOUNTS = [
-  { email: 'bishop@laim.church', role: 'bishop', who: 'Bishop Dr. Donald Mutiso', note: 'Sees every branch' },
-  { email: 'secretary.hq@laim.church', role: 'secretary', who: 'Secretary — HQ', note: 'Enters HQ records' },
-  { email: 'pastor.korrompoi@laim.church', role: 'pastor', who: 'Pastor — Korrompoi', note: 'Sees Korrompoi only' },
-  { email: 'acacia@laim.church', role: 'cell_leader', who: 'Acacia Home Church', note: 'Thursday report' },
-]
 
 const LED = 'linear-gradient(90deg,#22C55E 0%,#3B82F6 30%,#8B5CF6 58%,#EC4899 82%,#F2C811 100%)'
 
@@ -48,7 +41,6 @@ export default function Login() {
     e.preventDefault()
     dispatch(login({ email, password }))
   }
-  const quick = (acc) => dispatch(login({ email: acc.email, password: 'demo' }))
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-altar-900 lg:grid lg:grid-cols-[1.25fr_1fr]">
@@ -83,7 +75,7 @@ export default function Login() {
             <span className="mt-1 block font-sans text-sm font-bold tracking-wide text-flame-300">Leviticus 6:13</span>
           </motion.p>
           <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
-            {['LAIM HQ', 'Korrompoi', 'Milimani', 'Matuu'].map((b) => (
+            {BRANCHES.map((b) => b.short === 'HQ' ? 'LAIM HQ' : b.short).map((b) => (
               <span key={b} className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold text-white/85 backdrop-blur">
                 {b}
               </span>
@@ -135,30 +127,6 @@ export default function Login() {
                 </Button>
               </form>
               <p className="mt-5 text-center text-xs text-ink-400">Forgot your password? Ask the church office to reset it.</p>
-
-              {IS_DEMO && (
-                <div className="mt-7 border-t border-ink-100 pt-6">
-                  <div className="mb-3 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-ink-400">Preview — sign in as</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {DEMO_ACCOUNTS.map((a, i) => (
-                      <button
-                        key={a.email}
-                        onClick={() => quick(a)}
-                        className={cx(
-                          'group rounded-2xl border border-ink-200 bg-linen/60 p-3 text-left transition hover:-translate-y-0.5 hover:border-altar-300 hover:bg-white hover:shadow-card',
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-flame-700">
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: ['#8B5CF6', '#22C55E', '#3B82F6', '#EC4899'][i] }} />
-                          {ROLES[a.role].label}
-                        </div>
-                        <div className="mt-0.5 text-[13px] font-semibold leading-snug text-ink-900 group-hover:text-altar-700">{a.who}</div>
-                        <div className="text-[11px] text-ink-500">{a.note}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <p className="mt-5 text-center text-xs text-altar-200/80">Authorised church staff only</p>

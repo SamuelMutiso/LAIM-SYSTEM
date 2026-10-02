@@ -210,7 +210,7 @@ function MemberDrawer({ id, onClose, canWrite, onEdit }) {
                   {m.full_name}
                 </h2>
                 <div className="mt-1 text-sm text-altar-100">
-                  {ageOf(m.dob)} years · {m.gender === 'F' ? 'Female' : 'Male'} · {m.marital_status}
+                  {m.dob ? `${ageOf(m.dob)} years · ` : ''}{m.gender === 'F' ? 'Female' : 'Male'} · {m.marital_status}
                   {m.single_parent ? ' · Single parent' : ''}
                 </div>
               </div>
