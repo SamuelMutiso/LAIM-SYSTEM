@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.pdfkit import ALTAR, FLAME, INK, INK_SOFT, LINE, MARGIN, PAGE_H, PAGE_W, SCRIPTURE, Sheet
 
 BRANCHES = ["LAIM HQ", "Korrompoi", "Milimani", "Matuu", "Noonkopir"]
+CONSENT = "I agree that Lord’s Altar Ministries International may keep these details in its church records to contact me and care for me as a member. They will not be shared outside the church, and I can ask to see, correct or remove them at any time."
 
 
 def home_church_report(c):
@@ -44,8 +45,23 @@ def new_member(c):
     s.options("Water baptised?", ["Yes — date: ____________", "No"], inline_label_w=38)
     s.options("Holy Spirit baptism", ["Yes", "No", "Would like prayer"], inline_label_w=38)
     s.options("I’d like to serve in", ["Worship", "Ushering", "Media", "Sunday School", "Intercession", "Youth", "Hospitality", "Other: ________"], inline_label_w=38)
+    s.paragraph("[   ]  " + CONSENT, size=8, leading=4.2)
     s.fields(["Member’s signature", "Date"], [0.7, 0.3], height=12)
-    s.office_box(["Received by", "Date", "Entered in system  ☐"])
+    s.office_box(["Received by", "Date", "Entered in system"])
+
+
+def member_details(c):
+    s = Sheet(c, "Member Details Sheet", "One line per person. Children under 18: a parent or guardian fills their line.")
+    s.fields(["Branch", "Home church", "Date", "Collected by"], [0.25, 0.3, 0.17, 0.28], height=11)
+    s.paragraph("A tick in the Agree box means: " + CONSENT, size=7.5, leading=3.9)
+    s.y -= 2 * mm
+    s.table(
+        ["Full name", "M / F", "Phone", "Date of birth", "Married Y/N", "Where you stay", "Home church", "Agree"],
+        rows=17,
+        widths=[0.22, 0.065, 0.14, 0.12, 0.105, 0.15, 0.13, 0.07],
+        row_h=10,
+    )
+    s.note("Married includes widowed. Single parents write SP. The system works out each person’s group (youth, mothers, fathers…) from date of birth and marital status.", size=7)
 
 
 def new_believer(c):
@@ -64,7 +80,7 @@ def new_believer(c):
     s.options("Done", ["Bible given", "Assigned to home church", "Enrolled in discipleship class", "Booked for water baptism", "Visited at home"], inline_label_w=16)
     s.fields(["Home church assigned", "Follow-up person", "Their phone"], [0.35, 0.4, 0.25])
     s.table(["Follow-up date", "Contacted by", "How it went"], rows=4, widths=[0.2, 0.3, 0.5])
-    s.office_box(["Received by", "Date", "Entered in system  ☐"])
+    s.office_box(["Received by", "Date", "Entered in system"])
 
 
 def water_baptism(c):
@@ -83,7 +99,7 @@ def water_baptism(c):
     s.fields(["Home church leader’s signature", "Date"], [0.7, 0.3], height=12)
     s.fields(["Pastor’s approval — name & signature", "Date"], [0.7, 0.3], height=12)
     s.fields(["Baptised on", "Place", "Officiating minister"], [0.25, 0.35, 0.4], height=12)
-    s.office_box(["Certificate no.", "Entered in system  ☐"])
+    s.office_box(["Certificate no.", "Entered in system"])
 
 
 def child_dedication(c):
@@ -224,6 +240,7 @@ def visitor_card(c):
 FORMS = {
     "home-church-report": ("Home Church Report", home_church_report),
     "new-member-registration": ("New Member Registration", new_member),
+    "member-details-sheet": ("Member Details Sheet", member_details),
     "new-believer-decision": ("New Believer — Salvation Decision", new_believer),
     "water-baptism-application": ("Water Baptism Application", water_baptism),
     "child-dedication-request": ("Child Dedication Request", child_dedication),
