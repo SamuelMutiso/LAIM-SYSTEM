@@ -7,7 +7,7 @@ services:
     region: frankfurt
     plan: free
     buildCommand: pip install --upgrade pip pipenv && pipenv requirements > /tmp/requirements.txt && pip install -r /tmp/requirements.txt && flask db upgrade && flask setup
-    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
+    startCommand: gunicorn -w 2 --threads 4 --timeout 60 -b 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION

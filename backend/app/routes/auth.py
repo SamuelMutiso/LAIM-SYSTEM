@@ -3,7 +3,7 @@ from datetime import timedelta, timezone
 from flask import jsonify, request
 from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt, get_jwt_identity, jwt_required
 
-from ..extensions import bcrypt, db, limiter
+from ..extensions import bcrypt, db, limiter, login_key
 from ..models import Branch, TokenBlocklist, User, utcnow
 from ..security import ApiError, jwt_role_claims, login_required
 from . import api
@@ -19,7 +19,8 @@ def _aware(dt):
 
 
 @api.post("/auth/login")
-@limiter.limit("10 per minute; 50 per hour")
+@limiter.limit("10 per minute; 50 per hour", key_func=login_key)
+@limiter.limit("100 per minute")
 def login():
     body = request.get_json(silent=True) or {}
     email = str(body.get("email", "")).strip().lower()
