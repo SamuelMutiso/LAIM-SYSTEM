@@ -7,6 +7,7 @@ import { asset } from '../lib/utils'
 const FORMS = [
   { slug: 'home-church-report', title: 'Home Church Report', desc: 'Thursday cell report — attendance, preaching, visitors and offering.', online: '/home-church', pages: 1 },
   { slug: 'new-member-registration', title: 'New Member Registration', desc: 'Personal details, contacts, family, home church and spiritual background.', pages: 1 },
+  { slug: 'member-details-sheet', title: 'Member Details Sheet', desc: 'One line per person — name, phone, date of birth, marital status, area and home church. For collecting details at the church door.', pages: 1 },
   { slug: 'new-believer-decision', title: 'New Believer / Salvation Decision', desc: 'For someone who has just given their life to Christ — follow-up details.', pages: 1 },
   { slug: 'water-baptism-application', title: 'Water Baptism Application', desc: 'Candidate details, salvation testimony and pastor’s approval.', pages: 1 },
   { slug: 'child-dedication-request', title: 'Child Dedication Request', desc: 'Child and parents’ details for dedication on a Sunday service.', pages: 1 },
