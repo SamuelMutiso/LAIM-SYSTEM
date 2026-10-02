@@ -45,7 +45,7 @@ export default function Login() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-altar-900 lg:grid lg:grid-cols-[1.25fr_1fr]">
       <section className="relative h-72 overflow-hidden sm:h-80 lg:h-auto lg:min-h-screen">
-        <img src={asset('brand/stage.jpg')} srcSet={`${asset('brand/stage-sm.jpg')} 700w, ${asset('brand/stage.jpg')} 1500w`} sizes="(min-width:1024px) 56vw, 100vw" alt="The stage at Lord's Altar Ministries International" className="absolute inset-x-0 bottom-0 h-[130%] w-full object-cover object-[60%_100%]" />
+        <img src={asset('brand/stage.jpg')} srcSet={`${asset('brand/stage-sm.jpg')} 700w, ${asset('brand/stage.jpg')} 1500w, ${asset('brand/stage-xl.jpg')} 2400w`} sizes="(min-width:1024px) 56vw, 100vw" alt="The Bishop preaching with the praise team at Lord's Altar Ministries International" className="absolute inset-0 h-full w-full object-cover object-[58%_40%]" />
         <div className="absolute inset-0 bg-gradient-to-t from-altar-950 via-altar-900/55 to-altar-900/10" />
         <div className="absolute inset-0 bg-gradient-to-r from-altar-950/70 via-transparent to-transparent" />
         <div className="absolute inset-0 mix-blend-soft-light" style={{ background: 'radial-gradient(ellipse at 85% 30%, rgba(139,92,246,.55), transparent 55%), radial-gradient(ellipse at 20% 90%, rgba(242,200,17,.45), transparent 55%)' }} />
