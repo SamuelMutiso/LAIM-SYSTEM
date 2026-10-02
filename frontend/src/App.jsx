@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { restoreSession, logout } from './app/store'
-import { IS_DEMO, setSignedOutHandler } from './api/client'
+import { setSignedOutHandler } from './api/client'
 import { Toasts } from './components/ui'
 import { LogoMark } from './components/Brand'
 import AppLayout from './layouts/AppLayout'
@@ -19,7 +19,6 @@ import Activities from './pages/Activities'
 import Forms from './pages/Forms'
 import Audit from './pages/Audit'
 
-const Router = IS_DEMO ? HashRouter : BrowserRouter
 
 const OFFICE = ['bishop', 'pastor', 'secretary']
 
@@ -54,7 +53,7 @@ export default function App() {
   if (status === 'restoring') return <Splash />
 
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
@@ -79,6 +78,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toasts />
-    </Router>
+    </BrowserRouter>
   )
 }

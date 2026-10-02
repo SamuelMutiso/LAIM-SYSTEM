@@ -29,7 +29,7 @@ export default function Pledges() {
   const counts = useMemo(() => (pledges || []).reduce((t, p) => ((t[p.status] = (t[p.status] || 0) + 1), t), {}), [pledges])
   const rows = (pledges || []).filter((p) => (!status || p.status === status) && (!q || p.member_name.toLowerCase().includes(q.toLowerCase())))
   const open = (pledges || []).find((p) => p.id === openId)
-  const pct = fund ? Math.min(100, (fund.raised_total / fund.target) * 100) : 0
+  const pct = fund?.target > 0 ? Math.min(100, (fund.raised_total / fund.target) * 100) : 0
 
   const exportCsv = () =>
     downloadCSV('LAIM-pledges.csv', rows, [
@@ -84,7 +84,7 @@ export default function Pledges() {
               </div>
               <div className="mt-3 font-display text-4xl font-bold">{money(fund.raised_total)}</div>
               <div className="mt-1 text-sm text-altar-100">
-                raised of {money(fund.target)} target{fund.target_is_sample && ' (sample target — set the real one)'}
+                {fund.target > 0 ? `raised of ${money(fund.target)} target` : 'raised so far · the Bishop has not set a target yet'}
               </div>
               <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/15">
                 <div className="h-full rounded-full bg-gradient-to-r from-flame-300 to-flame-500" style={{ width: `${pct}%` }} />

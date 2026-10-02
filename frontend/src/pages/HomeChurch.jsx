@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { format, isThursday, previousThursday } from 'date-fns'
-import { CalendarCheck, CheckCircle2, ClipboardPen, Clock, Eye, FileText, Home, MapPin, Plus, Printer, Send, UserRound, Users, X } from 'lucide-react'
-import { HomeChurch as Api } from '../api/services'
+import { CalendarCheck, CheckCircle2, Clock, Eye, FileText, Home, MapPin, Pencil, Plus, Printer, Send, UserRound, Users, X } from 'lucide-react'
+import { HomeChurch as Api, Members as MembersApi } from '../api/services'
 import { errorField, errorMessage } from '../api/client'
 import { useApi, useMutation } from '../app/hooks'
 import { selectBranchParam } from '../app/store'
@@ -97,6 +97,8 @@ function OfficeView({ user }) {
   const { data: reports } = useApi(() => Api.reports({ branch_id, cell_id: cellFilter }), [branch_id, cellFilter])
   const [viewing, setViewing] = useState(null)
   const [filling, setFilling] = useState(false)
+  const [editingCell, setEditingCell] = useState(null)
+  const isSecretary = user.role === 'secretary'
   const thisWeek = format(lastThursday(), 'yyyy-MM-dd')
 
   return (
@@ -106,10 +108,17 @@ function OfficeView({ user }) {
         title="Home Church"
         subtitle="Thursday home church cells (6–7 PM). Each cell leader fills their report online — no paper to lose."
         actions={
-          user.role === 'secretary' && (
-            <Button icon={Plus} variant="secondary" onClick={() => setFilling(true)}>
-              Fill a report for a cell
-            </Button>
+          isSecretary && (
+            <>
+              {cells.length > 0 && (
+                <Button icon={FileText} variant="secondary" onClick={() => setFilling(true)}>
+                  Fill a report for a cell
+                </Button>
+              )}
+              <Button icon={Plus} onClick={() => setEditingCell({})}>
+                Add home church
+              </Button>
+            </>
           )
         }
       />
@@ -157,18 +166,31 @@ function OfficeView({ user }) {
                 </div>
                 <div className="mt-4 flex items-center justify-between">
                   <Badge tone={done ? 'green' : 'flame'}>{done ? 'This week’s report in' : 'Waiting for this week'}</Badge>
-                  <button onClick={() => setCellFilter(String(c.id))} className="text-xs font-semibold text-altar-600 hover:text-altar-800">
-                    Reports →
-                  </button>
+                  <span className="flex items-center gap-3">
+                    {isSecretary && (
+                      <button onClick={() => setEditingCell(c)} className="flex items-center gap-1 text-xs font-semibold text-ink-500 hover:text-altar-700">
+                        <Pencil className="h-3 w-3" /> Edit
+                      </button>
+                    )}
+                    <button onClick={() => setCellFilter(String(c.id))} className="text-xs font-semibold text-altar-600 hover:text-altar-800">
+                      Reports →
+                    </button>
+                  </span>
                 </div>
               </Card>
             )
           })}
-          <Card className="flex flex-col items-center justify-center border-dashed p-5 text-center">
-            <ClipboardPen className="mb-2 h-6 w-6 text-ink-300" />
-            <div className="text-sm font-semibold text-ink-700">Home church list</div>
-            <p className="mt-1 text-xs text-ink-500">These cells are sample names. The real list will be loaded when it’s ready.</p>
-          </Card>
+          {cells.length === 0 && (
+            <Card className="sm:col-span-2 xl:col-span-3">
+              <Empty icon={Home} title="No home churches yet" body={isSecretary ? 'Add each Thursday home church in your branch. Its leader can then submit reports from their phone.' : 'The branch secretary adds home churches. They will appear here.'} action={isSecretary && <Button icon={Plus} onClick={() => setEditingCell({})}>Add home church</Button>} />
+            </Card>
+          )}
+          {isSecretary && cells.length > 0 && (
+            <button onClick={() => setEditingCell({})} className="flex min-h-[180px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-ink-200 p-5 text-center text-ink-500 transition hover:border-altar-300 hover:text-altar-700">
+              <Plus className="mb-2 h-6 w-6" />
+              <span className="text-sm font-semibold">Add home church</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -233,6 +255,7 @@ function OfficeView({ user }) {
         </div>
       </Card>
       <ReportView report={viewing} onClose={() => setViewing(null)} />
+      <CellForm cell={editingCell} onClose={() => setEditingCell(null)} />
       <Modal open={filling} onClose={() => setFilling(false)} title="Fill a Home Church report" subtitle="For when a cell leader can’t submit online" width="max-w-3xl">
         <ReportForm cells={cells.filter((c) => c.branch_id === user.branch_id)} onDone={() => setFilling(false)} embedded />
       </Modal>
@@ -536,6 +559,83 @@ function ReportView({ report: r, onClose }) {
           </div>
         </div>
       )}
+    </Modal>
+  )
+}
+
+function CellForm({ cell, onClose }) {
+  const isNew = cell && !cell.id
+  const empty = { name: '', area: '', venue: '', meeting_time: '6:00 PM', leader_member_id: '', assistant_member_id: '' }
+  const { data: members } = useApi(() => (cell ? MembersApi.list({ status: 'Active' }) : Promise.resolve([])), [!!cell])
+  const { register, handleSubmit, reset, setError, formState } = useForm({ values: cell ? { ...empty, ...cell, leader_member_id: cell.leader_member_id || '', assistant_member_id: cell.assistant_member_id || '' } : empty })
+  const [serverError, setServerError] = useState(null)
+  const [save, busy] = useMutation((body) => (isNew ? Api.addCell(body) : Api.updateCell(cell.id, body)), { success: (c) => (isNew ? `${c.name} added` : 'Home church updated') })
+  const err = (k) => formState.errors[k]?.message
+  const onSubmit = async (body) => {
+    setServerError(null)
+    const { error } = await save(body)
+    if (error) {
+      const f = errorField(error)
+      if (f) setError(f, { message: errorMessage(error) })
+      else setServerError(errorMessage(error))
+      return
+    }
+    reset(empty)
+    onClose()
+  }
+  const people = members || []
+  return (
+    <Modal
+      open={!!cell}
+      onClose={onClose}
+      title={isNew ? 'Add home church' : `Edit ${cell?.name}`}
+      subtitle="Thursday home church in your branch"
+      width="max-w-lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit(onSubmit)} loading={busy}>
+            {isNew ? 'Add home church' : 'Save changes'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+        <Field label="Name" error={err('name')} className="sm:col-span-2">
+          <Input id="cell-name" placeholder="e.g. Acacia" {...register('name', { required: 'Give the home church a name' })} error={err('name')} />
+        </Field>
+        <Field label="Area" error={err('area')}>
+          <Input id="cell-area" placeholder="e.g. Kitengela" {...register('area', { required: 'Enter the area' })} error={err('area')} />
+        </Field>
+        <Field label="Meeting venue">
+          <Input id="cell-venue" placeholder="Whose home" {...register('venue')} />
+        </Field>
+        <Field label="Leader" error={err('leader_member_id')} hint={people.length ? undefined : 'Add members first, then choose the leader'}>
+          <Select id="cell-leader" {...register('leader_member_id')} error={err('leader_member_id')}>
+            <option value="">— Not set —</option>
+            {people.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Assistant" error={err('assistant_member_id')}>
+          <Select id="cell-assistant" {...register('assistant_member_id')} error={err('assistant_member_id')}>
+            <option value="">— Not set —</option>
+            {people.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="sm:col-span-2">
+          <ErrorNote>{serverError}</ErrorNote>
+        </div>
+      </form>
     </Modal>
   )
 }

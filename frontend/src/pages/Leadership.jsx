@@ -116,6 +116,13 @@ export default function Leadership() {
                   </tr>
                 </thead>
                 <tbody>
+                  {team?.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="td text-center text-ink-500">
+                        No worship team members added yet.
+                      </td>
+                    </tr>
+                  )}
                   {(team || []).map((w) => (
                     <tr key={w.id} className="border-t border-ink-100">
                       <td className="td">
@@ -163,6 +170,7 @@ export default function Leadership() {
 }
 
 function Section({ title, children }) {
+  if (!children || children.length === 0) return null
   return (
     <div>
       <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-ink-500">{title}</h2>

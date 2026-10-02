@@ -11,7 +11,6 @@ import { YoutubeIcon, FacebookIcon } from '../components/Brand'
 import { BRANCHES, DAYS, GROUPS, SOCIAL, WEEKLY_PROGRAMME, branchById, groupLabel } from '../lib/constants'
 import { compactMoney, money, num, fmtDate, ageOf, today } from '../lib/utils'
 import { upcomingMonthly } from '../lib/schedule'
-import { IS_DEMO } from '../api/client'
 
 const CHANNEL_UPLOADS = 'UUTvKlwkba8cRwGFJT3o3Pzg'
 
@@ -67,12 +66,18 @@ export default function Dashboard() {
                 </span>
               </div>
               <div className="mt-3 font-display text-[26px] font-bold leading-none">{compactMoney(d.building_fund_raised)}</div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink-100">
-                <div className="h-full rounded-full bg-gradient-to-r from-flame-400 to-flame-600" style={{ width: `${Math.min(100, (d.building_fund_raised / d.building_fund_target) * 100)}%` }} />
-              </div>
-              <div className="mt-2 text-xs text-ink-500">
-                {Math.round((d.building_fund_raised / d.building_fund_target) * 100)}% of {compactMoney(d.building_fund_target)} target
-              </div>
+              {d.building_fund_target > 0 ? (
+                <>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink-100">
+                    <div className="h-full rounded-full bg-gradient-to-r from-flame-400 to-flame-600" style={{ width: `${Math.min(100, (d.building_fund_raised / d.building_fund_target) * 100)}%` }} />
+                  </div>
+                  <div className="mt-2 text-xs text-ink-500">
+                    {Math.round((d.building_fund_raised / d.building_fund_target) * 100)}% of {compactMoney(d.building_fund_target)} target
+                  </div>
+                </>
+              ) : (
+                <div className="mt-2 text-xs text-ink-500">Raised so far · target not set yet</div>
+              )}
             </Card>
           </div>
 
@@ -107,7 +112,7 @@ export default function Dashboard() {
               <div className="space-y-3.5 px-5 pb-5 pt-4">
                 {GROUPS.map((g) => {
                   const v = d.by_group[g.key] || 0
-                  const max = Math.max(...Object.values(d.by_group))
+                  const max = Math.max(1, ...Object.values(d.by_group))
                   return (
                     <Link to={`/members?group=${g.key}`} key={g.key} className="group block">
                       <div className="mb-1 flex items-baseline justify-between text-sm">
@@ -221,7 +226,7 @@ export default function Dashboard() {
                     </thead>
                     <tbody>
                       {d.by_branch.map((b) => {
-                        const max = Math.max(...d.by_branch.map((x) => x.tithe_month))
+                        const max = Math.max(1, ...d.by_branch.map((x) => x.tithe_month))
                         return (
                           <tr key={b.branch_id} className="border-t border-ink-100">
                             <td className="td font-semibold text-ink-900">{branchById(b.branch_id).name}</td>
@@ -294,28 +299,16 @@ export default function Dashboard() {
 
           <Card className="overflow-hidden">
             <div className="grid lg:grid-cols-[1.4fr_1fr]">
-              {IS_DEMO ? (
-                <a href={SOCIAL.youtubeLive} target="_blank" rel="noreferrer" className="group relative grid aspect-video place-items-center overflow-hidden bg-altar-950">
-                  <div className="absolute inset-0 bg-flame-glow opacity-70" />
-                  <div className="relative flex flex-col items-center gap-3 text-white">
-                    <span className="grid h-16 w-16 place-items-center rounded-full bg-[#FF0033] shadow-lift transition group-hover:scale-105">
-                      <YoutubeIcon className="h-8 w-8" />
-                    </span>
-                    <span className="text-sm font-semibold">Watch on YouTube</span>
-                  </div>
-                </a>
-              ) : (
-                <div className="aspect-video bg-altar-950">
-                  <iframe
-                    className="h-full w-full"
-                    src={`https://www.youtube-nocookie.com/embed/videoseries?list=${CHANNEL_UPLOADS}`}
-                    title="Latest from Lord's Altar Ministries on YouTube"
-                    loading="lazy"
-                    allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              )}
+              <div className="aspect-video bg-altar-950">
+                <iframe
+                  className="h-full w-full"
+                  src={`https://www.youtube-nocookie.com/embed/videoseries?list=${CHANNEL_UPLOADS}`}
+                  title="Latest from Lord's Altar Ministries on YouTube"
+                  loading="lazy"
+                  allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
               <div className="flex flex-col justify-center gap-4 p-6 lg:p-8">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-flame-600">Media</div>
                 <h3 className="text-xl font-bold">Latest services on YouTube</h3>
