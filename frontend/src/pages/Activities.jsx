@@ -1,5 +1,5 @@
 import { addMonths, format } from 'date-fns'
-import { BookOpen, Flame, HandHeart, Home, Mic2, Moon, Sun, Users } from 'lucide-react'
+import { BookOpen, DoorOpen, Flame, HandHeart, Home, Mic2, Moon, Sun, Users } from 'lucide-react'
 import { Badge, Card, CardHeader, PageHeader } from '../components/ui'
 import { DAYS, WEEKLY_PROGRAMME } from '../lib/constants'
 import { monthlyInMonth, upcomingMonthly } from '../lib/schedule'
@@ -12,6 +12,7 @@ const KIND = {
   youth: { icon: Users, tone: 'bg-scripture-50 text-scripture-700 border-scripture-100', dot: 'bg-scripture-500' },
   cell: { icon: Home, tone: 'bg-emerald-50 text-emerald-700 border-emerald-100', dot: 'bg-emerald-500' },
   worship: { icon: Mic2, tone: 'bg-sky-50 text-sky-700 border-sky-100', dot: 'bg-sky-500' },
+  visit: { icon: DoorOpen, tone: 'bg-rose-50 text-rose-700 border-rose-100', dot: 'bg-rose-500' },
 }
 const ORDER = [1, 2, 3, 4, 5, 6, 0]
 

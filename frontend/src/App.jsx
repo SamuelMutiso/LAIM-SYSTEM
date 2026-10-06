@@ -18,6 +18,9 @@ import Inventory from './pages/Inventory'
 import Activities from './pages/Activities'
 import Forms from './pages/Forms'
 import Audit from './pages/Audit'
+import Reports from './pages/Reports'
+import Departments, { DepartmentPage } from './pages/Departments'
+import { homeFor } from './lib/utils'
 
 
 const OFFICE = ['bishop', 'pastor', 'secretary']
@@ -25,7 +28,7 @@ const OFFICE = ['bishop', 'pastor', 'secretary']
 function Guard({ roles, children }) {
   const user = useSelector((s) => s.auth.user)
   if (!user) return <Navigate to="/login" replace />
-  if (roles && !roles.includes(user.role)) return <Navigate to={user.role === 'cell_leader' ? '/home-church' : '/'} replace />
+  if (roles && !roles.includes(user.role)) return <Navigate to={homeFor(user)} replace />
   return children
 }
 
@@ -65,7 +68,10 @@ export default function App() {
         >
           <Route index element={<Guard roles={OFFICE}><Dashboard /></Guard>} />
           <Route path="members" element={<Guard roles={OFFICE}><Members /></Guard>} />
-          <Route path="home-church" element={<HomeChurch />} />
+          <Route path="home-church" element={<Guard roles={[...OFFICE, 'cell_leader']}><HomeChurch /></Guard>} />
+          <Route path="departments" element={<Guard roles={OFFICE}><Departments /></Guard>} />
+          <Route path="departments/:id" element={<Guard roles={[...OFFICE, 'dept_leader']}><DepartmentPage /></Guard>} />
+          <Route path="reports" element={<Guard roles={OFFICE}><Reports /></Guard>} />
           <Route path="leadership" element={<Guard roles={OFFICE}><Leadership /></Guard>} />
           <Route path="tithe" element={<Guard roles={OFFICE}><Tithe /></Guard>} />
           <Route path="offering" element={<Guard roles={OFFICE}><Offering /></Guard>} />

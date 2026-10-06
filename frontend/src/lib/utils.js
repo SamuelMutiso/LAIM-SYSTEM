@@ -58,6 +58,19 @@ export function downloadCSV(filename, rows, columns) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+export function saveBlob(filename, blob) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+export const homeFor = (user) => (user?.role === 'cell_leader' ? '/home-church' : user?.role === 'dept_leader' ? `/departments/${user.department_id}` : '/')
+
 export const asset = (p) => `${import.meta.env.BASE_URL}${p.replace(/^\//, '')}`
 
 export const today = () => new Date()

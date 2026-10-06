@@ -7,7 +7,7 @@ import { login } from '../app/store'
 import { LogoMark } from '../components/Brand'
 import { Button, ErrorNote } from '../components/ui'
 import { BRANCHES } from '../lib/constants'
-import { asset } from '../lib/utils'
+import { asset, homeFor } from '../lib/utils'
 
 
 const LED = 'linear-gradient(90deg,#22C55E 0%,#3B82F6 30%,#8B5CF6 58%,#EC4899 82%,#F2C811 100%)'
@@ -35,7 +35,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
 
-  if (user) return <Navigate to={user.role === 'cell_leader' ? '/home-church' : '/'} replace />
+  if (user) return <Navigate to={homeFor(user)} replace />
 
   const submit = (e) => {
     e.preventDefault()
