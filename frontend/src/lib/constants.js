@@ -13,6 +13,7 @@ export const ROLES = {
   pastor: { label: 'Branch Pastor', scope: 'Own branch · view only' },
   secretary: { label: 'Branch Secretary', scope: 'Own branch · enter & edit data' },
   cell_leader: { label: 'Home Church Leader', scope: 'Own cell · Thursday reports' },
+  dept_leader: { label: 'Department Leader', scope: 'Own department · members & reports' },
 }
 
 export const GROUPS = [
@@ -62,6 +63,8 @@ export const INVENTORY_CATEGORIES = [
 
 export const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Needs repair', 'Missing']
 
+export const SERVICES = ['Main Service', 'Morning Glory', 'Youth Service', 'Evening Prayer Service', 'Bible Study', 'Overnight Kesha', 'Youth Kesha', "Leaders' Kesha", 'Other']
+
 export const PLEDGE_PROJECTS = ['Main Church Building']
 
 export const WEEKLY_PROGRAMME = [
@@ -70,6 +73,7 @@ export const WEEKLY_PROGRAMME = [
   { day: 0, time: '8:00 – 9:30 AM', title: 'Discipleship Class', kind: 'teaching' },
   { day: 0, time: '9:30 AM – 12:00 PM', title: 'Main Service', kind: 'service' },
   { day: 1, time: '5:00 – 6:00 AM', title: 'Morning Glory', kind: 'prayer' },
+  { day: 1, time: 'Evening, after work', title: 'Visitation', kind: 'visit' },
   { day: 2, time: '5:00 – 6:00 AM', title: 'Morning Glory', kind: 'prayer' },
   { day: 2, time: '5:30 – 7:30 PM', title: 'Evening Prayer Service', kind: 'prayer' },
   { day: 3, time: '5:00 – 6:00 AM', title: 'Morning Glory', kind: 'prayer' },

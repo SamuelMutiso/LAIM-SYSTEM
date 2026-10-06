@@ -335,8 +335,8 @@ export function Toasts() {
             exit={{ y: 10, opacity: 0 }}
             className="pointer-events-auto flex items-center gap-2.5 rounded-2xl bg-altar-900 px-4 py-3 text-sm font-medium text-white shadow-lift"
           >
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-flame-400 text-altar-900">
-              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            <span className={cx('grid h-5 w-5 place-items-center rounded-full', t.tone === 'error' ? 'bg-scripture-500 text-white' : 'bg-flame-400 text-altar-900')}>
+              {t.tone === 'error' ? <X className="h-3.5 w-3.5" strokeWidth={3} /> : <Check className="h-3.5 w-3.5" strokeWidth={3} />}
             </span>
             {t.message}
           </motion.div>

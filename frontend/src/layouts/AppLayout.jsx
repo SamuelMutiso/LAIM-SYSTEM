@@ -7,6 +7,7 @@ import {
   Boxes,
   CalendarDays,
   ClipboardList,
+  FileSpreadsheet,
   Coins,
   HandCoins,
   Home,
@@ -14,6 +15,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Network,
   ScrollText,
   ShieldCheck,
   Users,
@@ -30,29 +32,37 @@ import { cx } from '../lib/utils'
 import api, { tokens } from '../api/client'
 
 const NAV = [
-  { section: 'Overview', items: [{ to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['bishop', 'pastor', 'secretary'] }] },
+  {
+    section: 'Overview',
+    items: [
+      { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['bishop', 'pastor', 'secretary'] },
+      { to: '/reports', label: 'Reports', icon: FileSpreadsheet, roles: ['bishop', 'pastor', 'secretary'] },
+    ],
+  },
   {
     section: 'People',
     items: [
       { to: '/members', label: 'Members', icon: Users, roles: ['bishop', 'pastor', 'secretary'] },
       { to: '/home-church', label: 'Home Church', icon: Home, roles: ['bishop', 'pastor', 'secretary', 'cell_leader'] },
       { to: '/leadership', label: 'Leadership', icon: UserRoundCog, roles: ['bishop', 'pastor', 'secretary'] },
+      { to: '/departments', label: 'Departments', icon: Network, roles: ['bishop', 'pastor', 'secretary'] },
+      { to: 'MY_DEPARTMENT', label: 'My Department', icon: Network, roles: ['dept_leader'] },
     ],
   },
   {
     section: 'Giving',
     items: [
       { to: '/tithe', label: 'Tithe', icon: Wallet, roles: ['bishop', 'pastor', 'secretary'] },
-      { to: '/offering', label: 'Sunday Offering', icon: Coins, roles: ['bishop', 'pastor', 'secretary'] },
+      { to: '/offering', label: 'Offering', icon: Coins, roles: ['bishop', 'pastor', 'secretary'] },
       { to: '/pledges', label: 'Pledges & Building', icon: HandCoins, roles: ['bishop', 'pastor', 'secretary'] },
     ],
   },
   {
     section: 'Church',
     items: [
-      { to: '/activities', label: 'Activities', icon: CalendarDays, roles: ['bishop', 'pastor', 'secretary', 'cell_leader'] },
+      { to: '/activities', label: 'Activities', icon: CalendarDays, roles: ['bishop', 'pastor', 'secretary', 'cell_leader', 'dept_leader'] },
       { to: '/inventory', label: 'Inventory', icon: Boxes, roles: ['bishop', 'pastor', 'secretary'] },
-      { to: '/forms', label: 'Forms', icon: ClipboardList, roles: ['bishop', 'pastor', 'secretary', 'cell_leader'] },
+      { to: '/forms', label: 'Forms', icon: ClipboardList, roles: ['bishop', 'pastor', 'secretary', 'cell_leader', 'dept_leader'] },
       { to: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['bishop'] },
     ],
   },
@@ -79,7 +89,7 @@ function SidebarContent({ user, onNavigate }) {
                 {items.map((i) => (
                   <NavLink
                     key={i.to}
-                    to={i.to}
+                    to={i.to === 'MY_DEPARTMENT' ? `/departments/${user.department_id}` : i.to}
                     end={i.to === '/'}
                     onClick={onNavigate}
                     className={({ isActive }) =>

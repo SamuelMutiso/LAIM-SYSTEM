@@ -7,7 +7,18 @@ BRANCHES = [
 ]
 HQ_BRANCH_ID = 1
 
-ROLES = ("bishop", "pastor", "secretary", "cell_leader")
+ROLES = ("bishop", "pastor", "secretary", "cell_leader", "dept_leader")
+SERVICES = (
+    "Main Service",
+    "Morning Glory",
+    "Youth Service",
+    "Evening Prayer Service",
+    "Bible Study",
+    "Overnight Kesha",
+    "Youth Kesha",
+    "Leaders' Kesha",
+    "Other",
+)
 GENDERS = ("M", "F")
 MARITAL = ("Single", "Married", "Widowed", "Divorced", "Separated")
 MEMBER_STATUS = ("Active", "Inactive", "Transferred", "Deceased")

@@ -102,7 +102,7 @@ def _cells_for(user):
 
 
 @api.get("/cells")
-@login_required()
+@login_required(*OFFICE, "cell_leader")
 def list_cells(user):
     out = []
     for c in _cells_for(user).order_by(HomeChurch.branch_id, HomeChurch.name):
@@ -185,7 +185,7 @@ def update_cell(user, cid):
 
 
 @api.get("/cells/<int:cid>/roster")
-@login_required()
+@login_required(*OFFICE, "cell_leader")
 def cell_roster(user, cid):
     c = db.get_or_404(HomeChurch, cid)
     if user.role == "cell_leader" and user.cell_id != c.id:
@@ -197,7 +197,7 @@ def cell_roster(user, cid):
 
 
 @api.get("/cell-reports")
-@login_required()
+@login_required(*OFFICE, "cell_leader")
 def list_cell_reports(user):
     q = CellReport.query
     if user.role == "cell_leader":

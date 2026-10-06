@@ -40,7 +40,7 @@ export default function Forms() {
                 <a href={asset(`forms/${f.slug}.pdf`)} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-ink-200 px-3 text-xs font-semibold text-ink-700 hover:bg-ink-100/50">
                   <Printer className="h-3.5 w-3.5" /> Open & print
                 </a>
-                {f.online && (
+                {f.online && user.role !== 'dept_leader' && (
                   <Link to={f.online}>
                     <Button size="sm" variant="gold" icon={ExternalLink}>
                       {user.role === 'cell_leader' ? 'Fill online' : 'Online reports'}

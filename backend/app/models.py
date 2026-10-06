@@ -31,12 +31,13 @@ class User(TimestampMixin, db.Model):
     role = db.Column(db.String(20), nullable=False)
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False)
     cell_id = db.Column(db.Integer, db.ForeignKey("home_churches.id"))
+    department_id = db.Column(db.Integer, db.ForeignKey("departments.id", use_alter=True))
     active = db.Column(db.Boolean, default=True, nullable=False)
     last_login_at = db.Column(db.DateTime(timezone=True))
     failed_logins = db.Column(db.Integer, default=0, nullable=False, server_default="0")
     locked_until = db.Column(db.DateTime(timezone=True))
 
-    __table_args__ = (CheckConstraint("role in ('bishop','pastor','secretary','cell_leader')", name="ck_user_role"),)
+    __table_args__ = (CheckConstraint("role in ('bishop','pastor','secretary','cell_leader','dept_leader')", name="ck_user_role"),)
 
     def set_password(self, raw):
         self.password_hash = bcrypt.generate_password_hash(raw).decode()
@@ -45,7 +46,7 @@ class User(TimestampMixin, db.Model):
         return bcrypt.check_password_hash(self.password_hash, raw)
 
     def to_dict(self):
-        return {"id": self.id, "email": self.email, "name": self.name, "role": self.role, "branch_id": self.branch_id, "cell_id": self.cell_id}
+        return {"id": self.id, "email": self.email, "name": self.name, "role": self.role, "branch_id": self.branch_id, "cell_id": self.cell_id, "department_id": self.department_id}
 
 
 class TokenBlocklist(db.Model):
@@ -303,3 +304,40 @@ class AuditLog(db.Model):
     branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"))
     action = db.Column(db.String(120), nullable=False)
     target = db.Column(db.String(300), default="")
+
+
+class Department(TimestampMixin, db.Model):
+    __tablename__ = "departments"
+    id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False, index=True)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, default="")
+    leader_member_id = db.Column(db.Integer, db.ForeignKey("members.id"))
+    assistant_member_id = db.Column(db.Integer, db.ForeignKey("members.id"))
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    leader = db.relationship("Member", foreign_keys=[leader_member_id])
+    assistant = db.relationship("Member", foreign_keys=[assistant_member_id])
+    __table_args__ = (UniqueConstraint("branch_id", "name", name="uq_department_branch_name"),)
+
+
+class DepartmentMember(TimestampMixin, db.Model):
+    __tablename__ = "department_members"
+    id = db.Column(db.Integer, primary_key=True)
+    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False, index=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False)
+    role = db.Column(db.String(80), default="")
+    member = db.relationship("Member")
+    __table_args__ = (UniqueConstraint("department_id", "member_id", name="uq_department_member"),)
+
+
+class DepartmentReport(TimestampMixin, db.Model):
+    __tablename__ = "department_reports"
+    id = db.Column(db.Integer, primary_key=True)
+    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False, index=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id"), nullable=False, index=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    title = db.Column(db.String(160), nullable=False)
+    details = db.Column(db.Text, default="")
+    people_involved = db.Column(db.Integer)
+    submitted_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    submitted_by_name = db.Column(db.String(160), default="")

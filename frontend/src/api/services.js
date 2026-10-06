@@ -30,6 +30,7 @@ export const Tithes = {
 export const Offerings = {
   list: (params) => get('/offerings', params),
   create: (body) => post('/offerings', body),
+  remove: (id) => del(`/offerings/${id}`),
   report: (params) => get('/reports/offering', params),
 }
 
@@ -65,3 +66,21 @@ export const Inventory = {
 }
 
 export const Audit = { list: () => get('/audit') }
+
+export const Departments = {
+  list: () => get('/departments'),
+  get: (id) => get(`/departments/${id}`),
+  create: (body) => post('/departments', body),
+  update: (id, body) => put(`/departments/${id}`, body),
+  members: (id) => get(`/departments/${id}/members`),
+  candidates: (id) => get(`/departments/${id}/candidates`),
+  addMember: (id, body) => post(`/departments/${id}/members`, body),
+  removeMember: (id, rowId) => del(`/departments/${id}/members/${rowId}`),
+  reports: (id) => get(`/departments/${id}/reports`),
+  addReport: (id, body) => post(`/departments/${id}/reports`, body),
+  issueLogin: (id, body) => post(`/departments/${id}/login`, body),
+}
+
+export const Reports = {
+  download: (kind, params) => api.get(`/reports/download/${kind}.xlsx`, { params, responseType: 'blob' }).then((r) => r.data),
+}

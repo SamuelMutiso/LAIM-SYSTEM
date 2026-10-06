@@ -90,15 +90,18 @@ def register_cli(app):
     @click.option("--role", prompt=True, type=click.Choice(ROLES))
     @click.option("--branch", "branch_id", prompt=f"Branch id ({BRANCH_HELP})", type=int)
     @click.option("--cell", "cell_id", default=None, type=int, help="Home church id (cell leaders only)")
+    @click.option("--department", "department_id", default=None, type=int, help="Department id (department leaders only)")
     @click.password_option()
-    def create_user(email, name, role, branch_id, cell_id, password):
+    def create_user(email, name, role, branch_id, cell_id, department_id, password):
         if role == "cell_leader" and not cell_id:
             raise click.UsageError("Cell leaders need --cell (the home church id).")
+        if role == "dept_leader" and not department_id:
+            raise click.UsageError("Department leaders need --department (the department id).")
         if len(password) < 10:
             raise click.UsageError("Use a password of at least 10 characters.")
         if find_user(email):
             raise click.ClickException(f"{email} already has a login.")
-        u = User(email=email.strip().lower(), name=name, role=role, branch_id=branch_id, cell_id=cell_id)
+        u = User(email=email.strip().lower(), name=name, role=role, branch_id=branch_id, cell_id=cell_id, department_id=department_id)
         u.set_password(password)
         db.session.add(u)
         db.session.commit()
