@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from marshmallow import EXCLUDE, Schema, ValidationError, fields, pre_load, validate, validates_schema
 
-from .constants import CONDITIONS, GENDERS, INVENTORY_CATEGORIES, MARITAL, MEMBER_STATUS, PAYMENT_METHODS
+from .constants import CONDITIONS, GENDERS, INVENTORY_CATEGORIES, MARITAL, MEMBER_STATUS, PAYMENT_METHODS, SERVICES
 
 PHONE_RE = re.compile(r"^(\+?254|0)(7|1)\d{8}$")
 MPESA_RE = re.compile(r"^[A-Z0-9]{10}$")
@@ -85,6 +85,9 @@ class TitheIn(PaymentIn):
 
 class OfferingIn(Base):
     date = fields.Date(required=True)
+    service = fields.Str(load_default="Main Service", validate=validate.OneOf(SERVICES, error="Choose the service."))
+    service_other = fields.Str(load_default="", validate=validate.Length(max=40))
+    cash_only_total = fields.Decimal(load_default=Decimal(0), places=2, validate=validate.Range(min=0))
     counts = fields.Dict(keys=fields.Str(), values=fields.Int(validate=validate.Range(min=0)), load_default=dict)
     mpesa_total = fields.Decimal(load_default=Decimal(0), places=2, validate=validate.Range(min=0))
     bank_total = fields.Decimal(load_default=Decimal(0), places=2, validate=validate.Range(min=0))
@@ -94,7 +97,7 @@ class OfferingIn(Base):
     @pre_load
     def clean(self, data, **_):
         data = dict(data)
-        for k in ("mpesa_total", "bank_total"):
+        for k in ("mpesa_total", "bank_total", "cash_only_total"):
             if data.get(k) in ("", None):
                 data[k] = 0
         data["counts"] = {str(k): int(v or 0) for k, v in (data.get("counts") or {}).items()}
@@ -120,6 +123,38 @@ class FundGiftIn(PaymentIn):
         if data.get("member_id") in ("", None):
             data["member_id"] = None
         return data
+
+
+class DepartmentIn(Base):
+    name = fields.Str(required=True, validate=validate.Length(min=2, max=120), error_messages={"required": "Give the department a name."})
+    description = fields.Str(load_default="")
+    leader_member_id = fields.Int(load_default=None, allow_none=True)
+    assistant_member_id = fields.Int(load_default=None, allow_none=True)
+    active = fields.Bool(load_default=True)
+
+    @pre_load
+    def clean(self, data, **_):
+        return _blank_to_none(dict(data), ["leader_member_id", "assistant_member_id"])
+
+
+class DepartmentMemberIn(Base):
+    member_id = fields.Int(required=True, error_messages={"required": "Choose a member."})
+    role = fields.Str(load_default="", validate=validate.Length(max=80))
+
+
+class DepartmentReportIn(Base):
+    date = fields.Date(required=True)
+    title = fields.Str(required=True, validate=validate.Length(min=2, max=160), error_messages={"required": "Give the report a title."})
+    details = fields.Str(load_default="")
+    people_involved = fields.Int(load_default=None, allow_none=True, validate=validate.Range(min=0))
+
+    @pre_load
+    def clean(self, data, **_):
+        return _blank_to_none(dict(data), ["people_involved"])
+
+
+class LoginIn(Base):
+    email = fields.Email(required=True, error_messages={"required": "Enter an email for the login.", "invalid": "Enter a valid email address."})
 
 
 class CellReportIn(Base):
