@@ -13,6 +13,7 @@ Private office system for Lord's Altar Ministries International: LAIM HQ, Korrom
 | Branch pastor | Own branch | Nothing (view only) |
 | Branch secretary | Own branch | All records for own branch |
 | Home church leader | Own home church | Thursday reports |
+| Department leader | Own department | Department members and reports |
 
 ## Run locally
 
@@ -50,6 +51,7 @@ Both deploy automatically from `main`.
 | `flask reset-password EMAIL` | New password, also unlocks |
 | `flask unlock EMAIL` | Unlock after 5 wrong passwords |
 | `flask add-cell NAME AREA -b BRANCH_ID` | Add a home church |
+| `flask create-user --role dept_leader --department ID` | Department leader login (the secretary can also do this in the app) |
 
 ## Tests
 

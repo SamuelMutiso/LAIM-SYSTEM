@@ -238,3 +238,88 @@ def test_member_without_birth_date_does_not_break_pages(client):
     for url in ("/api/dashboard", "/api/members", "/api/exports/members.xlsx", "/api/cells"):
         assert client.get(url, headers=h).status_code == 200, url
 
+
+
+def test_offering_for_every_service(client):
+    h = login(client, "sec@t")
+    tuesday = last_sunday() - timedelta(days=5)
+    r = client.post("/api/offerings", json={"date": tuesday.isoformat(), "service": "Evening Prayer Service", "cash_only_total": 2350, "mpesa_total": 400}, headers=h)
+    assert r.status_code == 201, r.json
+    assert r.json["total"] == 2750 and r.json["service"] == "Evening Prayer Service"
+    assert client.post("/api/offerings", json={"date": tuesday.isoformat(), "service": "Evening Prayer Service", "cash_only_total": 10}, headers=h).status_code == 409
+    assert client.post("/api/offerings", json={"date": tuesday.isoformat(), "service": "Morning Glory", "cash_only_total": 600}, headers=h).status_code == 201
+    assert client.post("/api/offerings", json={"date": tuesday.isoformat(), "service": "Main Service", "cash_only_total": 600}, headers=h).status_code == 422
+    assert client.post("/api/offerings", json={"date": tuesday.isoformat(), "service": "Other", "cash_only_total": 600}, headers=h).json["field"] == "service_other"
+    assert client.post("/api/offerings", json={"date": tuesday.isoformat(), "service": "Other", "service_other": "Fundraiser", "cash_only_total": 900}, headers=h).json["service"] == "Fundraiser"
+    assert client.post("/api/offerings", json={"date": tuesday.isoformat(), "service": "Youth Service"}, headers=h).status_code == 422
+    report = client.get("/api/reports/offering", headers=h).json
+    assert report["services"] == 3 and report["total"] == 4250
+    assert {s["service"] for s in report["by_service"]} == {"Evening Prayer Service", "Morning Glory", "Fundraiser"}
+    oid = client.get("/api/offerings?service=Morning Glory", headers=h).json[0]["id"]
+    assert client.delete(f"/api/offerings/{oid}", headers=login(client, "pastor2@t")).status_code == 403
+    assert client.delete(f"/api/offerings/{oid}", headers=h).status_code == 204
+
+
+def test_departments_and_leader_login(client):
+    sec = login(client, "sec@t")
+    members = {m["full_name"]: m["id"] for m in client.get("/api/members", headers=login(client, "bishop@t")).json}
+    r = client.post("/api/departments", json={"name": "Media", "description": "Live stream and sound", "leader_member_id": members["Faith Kioko"]}, headers=sec)
+    assert r.status_code == 201, r.json
+    did = r.json["id"]
+    assert r.json["members_count"] == 1
+    assert client.post("/api/departments", json={"name": "media"}, headers=sec).status_code == 409
+    assert client.post("/api/departments", json={"name": "Ushers", "leader_member_id": members["Peter Sankale"]}, headers=sec).json["field"] == "leader_member_id"
+    assert client.post("/api/departments", json={"name": "Ushers"}, headers=login(client, "pastor2@t")).status_code == 403
+
+    issued = client.post(f"/api/departments/{did}/login", json={"email": "media@laim.church"}, headers=sec)
+    assert issued.status_code == 200, issued.json
+    lead = client.post("/api/auth/login", json={"email": "media@laim.church", "password": issued.json["password"]}).json
+    assert lead["user"]["role"] == "dept_leader" and lead["user"]["department_id"] == did
+    h = {"Authorization": f"Bearer {lead['access_token']}"}
+
+    assert [x["id"] for x in client.get("/api/departments", headers=h).json] == [did]
+    cands = client.get(f"/api/departments/{did}/candidates", headers=h).json
+    assert set(cands[0]) == {"id", "name"}
+    assert client.post(f"/api/departments/{did}/members", json={"member_id": members["Samuel Mutiso"], "role": "Camera"}, headers=h).status_code == 201
+    assert client.post(f"/api/departments/{did}/members", json={"member_id": members["Peter Sankale"]}, headers=h).status_code == 422
+    rep = client.post(f"/api/departments/{did}/reports", json={"date": date.today().isoformat(), "title": "Streamed Sunday service", "details": "Two cameras", "people_involved": 4}, headers=h)
+    assert rep.status_code == 201 and rep.json["submitted_by"] == "Faith Kioko"
+    assert len(client.get(f"/api/departments/{did}/reports", headers=sec).json) == 1
+
+    for url in ("/api/members", "/api/tithes", "/api/offerings", "/api/cells", "/api/cell-reports", "/api/leaders", "/api/inventory", "/api/dashboard", "/api/reports/download/members.xlsx"):
+        assert client.get(url, headers=h).status_code == 403, url
+    other = client.post("/api/departments", json={"name": "Ushers"}, headers=sec).json["id"]
+    assert client.get(f"/api/departments/{other}/members", headers=h).status_code == 403
+    assert client.post(f"/api/departments/{other}/reports", json={"date": date.today().isoformat(), "title": "x y"}, headers=h).status_code == 403
+    assert client.get(f"/api/departments/{did}", headers=login(client, "pastor2@t")).status_code == 403
+    assert client.get("/api/departments", headers=login(client, "pastor2@t")).json == []
+
+    again = client.post(f"/api/departments/{did}/login", json={"email": "media@laim.church"}, headers=sec).json["password"]
+    assert again != issued.json["password"]
+    assert client.post("/api/auth/login", json={"email": "media@laim.church", "password": issued.json["password"]}).status_code == 401
+    assert client.post(f"/api/departments/{other}/login", json={"email": "ushers@laim.church"}, headers=sec).status_code == 422
+    client.put(f"/api/departments/{other}", json={"name": "Ushers", "leader_member_id": members["Samuel Mutiso"]}, headers=sec)
+    assert client.post(f"/api/departments/{other}/login", json={"email": "media@laim.church"}, headers=sec).status_code == 409
+    client.put(f"/api/departments/{did}", json={"name": "Media", "active": False}, headers=sec)
+    assert client.post("/api/auth/login", json={"email": "media@laim.church", "password": again}).status_code == 401
+
+
+def test_reports_download_as_excel(client):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    sec = login(client, "sec@t")
+    client.post("/api/offerings", json={"date": last_sunday().isoformat(), "counts": {"1000": 1}}, headers=sec)
+    client.post("/api/departments", json={"name": "Media"}, headers=sec)
+    for kind in ("members", "tithe", "tithe-by-member", "offering", "pledges", "building-fund", "inventory", "home-church-reports", "home-churches", "departments", "department-reports", "leadership"):
+        r = client.get(f"/api/reports/download/{kind}.xlsx?from=2026-01-01", headers=sec)
+        assert r.status_code == 200, kind
+        load_workbook(BytesIO(r.data))
+    pastor_rows = load_workbook(BytesIO(client.get("/api/reports/download/members.xlsx", headers=login(client, "pastor2@t")).data)).active
+    assert [row[0].value for row in pastor_rows.iter_rows(min_row=5)] == ["Peter Sankale"]
+    wb = load_workbook(BytesIO(client.get("/api/reports/download/everything.xlsx", headers=login(client, "bishop@t")).data))
+    assert len(wb.sheetnames) == 12
+    assert wb["Offering"]["A5"].value is not None
+    assert client.get("/api/reports/download/nothing.xlsx", headers=sec).status_code == 404
+    assert client.get("/api/reports/download/members.xlsx", headers=login(client, "cell@t")).status_code == 403

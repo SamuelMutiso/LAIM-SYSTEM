@@ -94,7 +94,7 @@ def audit(user, action, target=""):
 
 
 def jwt_role_claims(user):
-    return {"role": user.role, "branch_id": user.branch_id, "cell_id": user.cell_id}
+    return {"role": user.role, "branch_id": user.branch_id, "cell_id": user.cell_id, "department_id": user.department_id}
 
 
 def claims():

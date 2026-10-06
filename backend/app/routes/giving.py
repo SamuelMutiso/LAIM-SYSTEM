@@ -103,6 +103,8 @@ def tithe_report(user):
 @login_required(*OFFICE)
 def list_offerings(user):
     q = _range(apply_scope(Offering.query, Offering, user), Offering)
+    if request.args.get("service"):
+        q = q.filter(Offering.service == request.args["service"])
     return jsonify([offering_out(o) for o in q.order_by(Offering.date.desc(), Offering.branch_id)])
 
 
@@ -111,17 +113,37 @@ def list_offerings(user):
 def create_offering(user):
     require_write(user)
     data = load(OfferingIn)
-    if data["date"].weekday() != 6:
-        raise ApiError(422, "Offering is recorded for the Sunday Main Service — pick a Sunday.", "date")
-    if Offering.query.filter_by(branch_id=user.branch_id, date=data["date"], service="Main Service").first():
-        raise ApiError(409, "Offering for that Sunday has already been recorded for this branch.", "date")
+    service = data["service"]
+    if service == "Other":
+        service = data["service_other"].strip()
+        if not service:
+            raise ApiError(422, "Type the name of the service.", "service_other")
+    if service == "Main Service" and data["date"].weekday() != 6:
+        raise ApiError(422, "The Main Service is on Sunday — pick a Sunday, or choose another service.", "date")
+    if Offering.query.filter_by(branch_id=user.branch_id, date=data["date"], service=service).first():
+        raise ApiError(409, f"Offering for {service} on that day has already been recorded for this branch.", "date")
     counts = {str(v): max(0, int(data["counts"].get(str(v), 0))) for v in DENOMINATIONS}
     cash = sum(Decimal(k) * n for k, n in counts.items())
-    o = Offering(branch_id=user.branch_id, date=data["date"], counts=counts, cash_total=cash, mpesa_total=data["mpesa_total"], bank_total=data["bank_total"], counted_by=data["counted_by"], notes=data["notes"], recorded_by_id=user.id)
+    if not cash and data["cash_only_total"]:
+        cash = data["cash_only_total"]
+    o = Offering(branch_id=user.branch_id, date=data["date"], service=service, counts=counts, cash_total=cash, mpesa_total=data["mpesa_total"], bank_total=data["bank_total"], counted_by=data["counted_by"], notes=data["notes"], recorded_by_id=user.id)
+    if o.total <= 0:
+        raise ApiError(422, "Enter the amount collected.")
     db.session.add(o)
-    audit(user, "Recorded Sunday offering", f"{data['date'].isoformat()} · KSh {o.total:,.0f}")
+    audit(user, "Recorded offering", f"{service} · {data['date'].isoformat()} · KSh {o.total:,.0f}")
     db.session.commit()
     return jsonify(offering_out(o)), 201
+
+
+@api.delete("/offerings/<int:oid>")
+@login_required("secretary")
+def delete_offering(user, oid):
+    o = db.get_or_404(Offering, oid)
+    require_write(user, o.branch_id)
+    audit(user, "Deleted offering", f"{o.service} · {o.date.isoformat()} · KSh {o.total:,.0f}")
+    db.session.delete(o)
+    db.session.commit()
+    return "", 204
 
 
 @api.get("/reports/offering")
@@ -129,10 +151,12 @@ def create_offering(user):
 def offering_report(user):
     rows = _range(apply_scope(Offering.query, Offering, user), Offering).all()
     b = scope_branch(user)
-    by_month, by_branch = defaultdict(Decimal), defaultdict(Decimal)
+    by_month, by_branch, by_service, service_count = defaultdict(Decimal), defaultdict(Decimal), defaultdict(Decimal), defaultdict(int)
     for r in rows:
         by_month[r.date.strftime("%Y-%m")] += r.total
         by_branch[r.branch_id] += r.total
+        by_service[r.service] += r.total
+        service_count[r.service] += 1
     from ..models import Branch
 
     branches = [br.id for br in Branch.query.order_by(Branch.id)] if b is None else [b]
@@ -142,7 +166,9 @@ def offering_report(user):
             "cash": money(sum((r.cash_total for r in rows), start=Decimal(0))),
             "mpesa": money(sum((r.mpesa_total for r in rows), start=Decimal(0))),
             "bank": money(sum((r.bank_total for r in rows), start=Decimal(0))),
-            "sundays": len({r.date for r in rows}),
+            "sundays": len({r.date for r in rows if r.service == "Main Service"}),
+            "services": len(rows),
+            "by_service": [{"service": k, "total": money(v), "count": service_count[k]} for k, v in sorted(by_service.items(), key=lambda kv: -kv[1])],
             "by_month": [{"month": k, "total": money(v)} for k, v in sorted(by_month.items())],
             "by_branch": [{"branch_id": i, "total": money(by_branch[i])} for i in branches],
         }
