@@ -85,7 +85,7 @@ export default function Dashboard() {
             <Card className="xl:col-span-2">
               <CardHeader
                 title="Giving by month"
-                subtitle={`Tithe (first Sunday) and Sunday Main Service offering, ${TODAY.getFullYear()}`}
+                subtitle={`Tithe and offering from every service, ${TODAY.getFullYear()}`}
                 action={
                   <Link to="/tithe" className="flex items-center gap-1 text-xs font-semibold text-altar-600 hover:text-altar-800">
                     Reports <ArrowRight className="h-3.5 w-3.5" />
