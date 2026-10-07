@@ -11,13 +11,21 @@ def _db_url():
     return url.replace("postgres://", "postgresql://", 1)
 
 
+def _secret(name, fallback):
+    value = os.getenv(name, "")
+    if os.getenv("RENDER") and len(value) < 16:
+        raise RuntimeError(f"{name} must be set to a long random value in production.")
+    return value or fallback
+
+
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret")
+    SECRET_KEY = _secret("SECRET_KEY", "dev-only-secret")
+    MAX_CONTENT_LENGTH = 1024 * 1024
     SQLALCHEMY_DATABASE_URI = _db_url()
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     JSON_SORT_KEYS = False
 
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-only-jwt-secret")
+    JWT_SECRET_KEY = _secret("JWT_SECRET_KEY", "dev-only-jwt-secret-for-local-use-only")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=7)
 

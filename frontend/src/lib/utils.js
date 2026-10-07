@@ -44,7 +44,8 @@ export const cx = (...c) => c.filter(Boolean).join(' ')
 
 export function downloadCSV(filename, rows, columns) {
   const esc = (v) => {
-    const s = v === null || v === undefined ? '' : String(v)
+    let s = v === null || v === undefined ? '' : String(v)
+    if (/^[=@\t\r]/.test(s) || (/^[+-]/.test(s) && !/^[+-][\d\s.]*$/.test(s))) s = `'${s}`
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
   const head = columns.map((c) => esc(c.label)).join(',')

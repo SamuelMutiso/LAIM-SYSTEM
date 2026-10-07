@@ -119,8 +119,9 @@ def register_cli(app):
         u.set_password(password)
         u.failed_logins = 0
         u.locked_until = None
+        u.sign_out_everywhere()
         db.session.commit()
-        click.echo(f"Password reset and account unlocked for {u.email}")
+        click.echo(f"Password reset, account unlocked and old sessions signed out for {u.email}")
 
     @app.cli.command("unlock")
     @click.argument("email")

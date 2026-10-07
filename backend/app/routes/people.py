@@ -11,6 +11,7 @@ from ..security import ApiError, apply_scope, audit, ensure_can_read, login_requ
 from . import api
 
 OFFICE = ("bishop", "pastor", "secretary")
+RESERVED_ROLES = {"bishop", "assistant bishop"}
 
 
 def load(schema, data=None):
@@ -251,8 +252,10 @@ def assign_leader(user):
     require_write(user)
     data = load(LeaderIn)
     m = db.session.get(Member, data["member_id"])
-    if not m:
-        raise ApiError(422, "Pick the member.", "member_id")
+    if not m or m.branch_id != user.branch_id:
+        raise ApiError(422, "Pick a member from your branch.", "member_id")
+    if data["role"].strip().lower() in RESERVED_ROLES:
+        raise ApiError(422, "That role is set by the church office, not from a branch.", "role")
     for old in Leader.query.filter_by(role=data["role"], branch_id=user.branch_id, active=True):
         old.active = False
         old.until = date.today()

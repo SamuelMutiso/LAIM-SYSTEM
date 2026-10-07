@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Eye, EyeOff } from 'lucide-react'
 import { Auth } from '../api/services'
-import { errorField, errorMessage } from '../api/client'
+import { errorField, errorMessage, tokens } from '../api/client'
 import { useMutation } from '../app/hooks'
 import { Button, ErrorNote, Field, Input, Modal } from './ui'
 
@@ -22,7 +22,8 @@ export default function ChangePassword({ open, onClose }) {
 
   const onSubmit = async ({ current_password, new_password }) => {
     setServerError(null)
-    const { error } = await save({ current_password, new_password })
+    const { data, error } = await save({ current_password, new_password })
+    if (data?.access_token) tokens.set({ access_token: data.access_token, refresh_token: data.refresh_token })
     if (error) {
       const f = errorField(error)
       if (f) setError(f, { message: errorMessage(error) })

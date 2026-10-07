@@ -247,6 +247,8 @@ def add_fund_gift(user):
     require_write(user)
     data = load(FundGiftIn)
     m = db.session.get(Member, data["member_id"]) if data.get("member_id") else None
+    if data.get("member_id") and (not m or m.branch_id != user.branch_id):
+        raise ApiError(422, "Pick a member from your branch.", "member_id")
     contributor = m.full_name if m else (data.get("contributor") or "Anonymous").strip()
     claim_reference(data["method"], data["reference"], "building_fund")
     g = FundContribution(date=data["date"], amount=data["amount"], method=data["method"], reference=data["reference"] if data["method"] != "cash" else "", member_id=m.id if m else None, contributor=contributor, branch_id=user.branch_id, recorded_by_id=user.id)

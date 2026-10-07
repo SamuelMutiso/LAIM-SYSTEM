@@ -31,6 +31,14 @@ GROUP_LABEL = {"sunday_school": "Sunday School", "teens": "Teenagers", "junior_y
 METHOD = {"mpesa": "M-Pesa", "bank": "Bank", "cash": "Cash"}
 HEADER_FILL = PatternFill("solid", fgColor="2D3191")
 TOTAL_FILL = PatternFill("solid", fgColor="F3F0E8")
+FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def neutralise_formulas(ws):
+    for row in ws.iter_rows():
+        for cell in row:
+            if isinstance(cell.value, str) and cell.value.startswith(FORMULA_START):
+                cell.data_type = "s"
 
 
 def _dated(q, model, column="date"):
@@ -229,6 +237,7 @@ def _sheet(ws, title, headers, rows, money_cols, has_total, period, branch):
     for r in rows:
         ws.append(list(r))
     last = ws.max_row
+    neutralise_formulas(ws)
     for row in ws.iter_rows(min_row=5, max_row=last):
         for cell in row:
             if isinstance(cell.value, date):
