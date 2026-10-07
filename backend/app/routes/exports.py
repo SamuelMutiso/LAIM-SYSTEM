@@ -16,6 +16,7 @@ from ..security import apply_scope, ensure_can_read, login_required
 from . import api
 from .giving import tithe_report_data
 from .people import OFFICE
+from .reports import neutralise_formulas
 
 BRANCH_NAME = {i: n for i, _, n in BRANCHES}
 GROUP_LABEL = {"sunday_school": "Sunday School", "teens": "Teenagers", "junior_youth": "Junior Youth", "senior_youth": "Senior Youth", "fathers": "Fathers", "mothers": "Mothers"}
@@ -38,6 +39,7 @@ def _xlsx(title, headers, rows, filename, money_cols=()):
         cell.alignment = Alignment(vertical="center")
     for r in rows:
         ws.append(r)
+    neutralise_formulas(ws)
     for idx in money_cols:
         for row in ws.iter_rows(min_row=5, min_col=idx, max_col=idx):
             for cell in row:

@@ -36,6 +36,7 @@ class User(TimestampMixin, db.Model):
     last_login_at = db.Column(db.DateTime(timezone=True))
     failed_logins = db.Column(db.Integer, default=0, nullable=False, server_default="0")
     locked_until = db.Column(db.DateTime(timezone=True))
+    tokens_valid_from = db.Column(db.DateTime(timezone=True))
 
     __table_args__ = (CheckConstraint("role in ('bishop','pastor','secretary','cell_leader','dept_leader')", name="ck_user_role"),)
 
@@ -44,6 +45,17 @@ class User(TimestampMixin, db.Model):
 
     def check_password(self, raw):
         return bcrypt.check_password_hash(self.password_hash, raw)
+
+    def sign_out_everywhere(self):
+        self.tokens_valid_from = utcnow().replace(microsecond=0)
+
+    def token_is_stale(self, issued_at):
+        valid_from = self.tokens_valid_from
+        if valid_from is None:
+            return False
+        if valid_from.tzinfo is None:
+            valid_from = valid_from.replace(tzinfo=timezone.utc)
+        return issued_at < int(valid_from.timestamp())
 
     def to_dict(self):
         return {"id": self.id, "email": self.email, "name": self.name, "role": self.role, "branch_id": self.branch_id, "cell_id": self.cell_id, "department_id": self.department_id}
