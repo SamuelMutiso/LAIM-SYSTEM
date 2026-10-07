@@ -140,7 +140,7 @@ function SidebarContent({ user, onNavigate }) {
           </button>
           <button
             onClick={() => {
-              api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${tokens.get()?.access_token}` } }).catch(() => {})
+              api.post('/auth/logout', { refresh_token: tokens.get()?.refresh_token }, { headers: { Authorization: `Bearer ${tokens.get()?.access_token}` } }).catch(() => {})
               dispatch(logout())
               navigate('/login')
             }}
