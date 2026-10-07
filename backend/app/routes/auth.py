@@ -1,7 +1,7 @@
 from datetime import timedelta, timezone
 
 from flask import jsonify, request
-from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt, get_jwt_identity, jwt_required
+from flask_jwt_extended import create_access_token, create_refresh_token, decode_token, get_jwt, get_jwt_identity, jwt_required
 
 from ..extensions import bcrypt, db, limiter, login_key
 from ..models import Branch, TokenBlocklist, User, utcnow
@@ -9,7 +9,8 @@ from ..security import ApiError, jwt_role_claims, login_required
 from . import api
 
 
-MAX_FAILED_LOGINS = 5
+FAILS_PER_DEVICE = "5 per 15 minutes"
+MAX_FAILED_LOGINS = 20
 LOCK_MINUTES = 15
 _DUMMY_HASH = "$2b$12$i6oqK2EfnkNItiEPpNKIYezKKnd7y.u3/3v8P5igqYHSqsJlIq5h."
 
@@ -18,9 +19,21 @@ def _aware(dt):
     return dt.replace(tzinfo=timezone.utc) if dt and dt.tzinfo is None else dt
 
 
+def _failed(resp):
+    return resp.status_code == 401
+
+
+def _tokens(user):
+    extra = jwt_role_claims(user)
+    return {
+        "access_token": create_access_token(identity=str(user.id), additional_claims=extra),
+        "refresh_token": create_refresh_token(identity=str(user.id), additional_claims=extra),
+    }
+
+
 @api.post("/auth/login")
-@limiter.limit("10 per minute; 50 per hour", key_func=login_key)
-@limiter.limit("100 per minute")
+@limiter.limit(FAILS_PER_DEVICE, key_func=login_key, deduct_when=_failed)
+@limiter.limit("30 per minute; 300 per hour")
 def login():
     body = request.get_json(silent=True) or {}
     email = str(body.get("email", "")).strip().lower()
@@ -39,21 +52,13 @@ def login():
         if user.failed_logins >= MAX_FAILED_LOGINS:
             user.failed_logins = 0
             user.locked_until = now + timedelta(minutes=LOCK_MINUTES)
-            db.session.commit()
-            raise ApiError(429, f"Too many wrong passwords. This account is locked for {LOCK_MINUTES} minutes.")
-        left = MAX_FAILED_LOGINS - user.failed_logins
         db.session.commit()
-        raise ApiError(401, f"Email or password is incorrect. {left} attempt{'s' if left > 1 else ''} left before the account is locked.")
+        raise ApiError(401, "Email or password is incorrect.")
     user.failed_logins = 0
     user.locked_until = None
     user.last_login_at = now
     db.session.commit()
-    extra = jwt_role_claims(user)
-    return jsonify(
-        access_token=create_access_token(identity=str(user.id), additional_claims=extra),
-        refresh_token=create_refresh_token(identity=str(user.id), additional_claims=extra),
-        user=user.to_dict(),
-    )
+    return jsonify(**_tokens(user), user=user.to_dict())
 
 
 @api.post("/auth/refresh")
@@ -68,7 +73,18 @@ def refresh():
 @api.post("/auth/logout")
 @jwt_required(verify_type=False)
 def logout():
-    db.session.add(TokenBlocklist(jti=get_jwt()["jti"]))
+    jtis = {get_jwt()["jti"]}
+    refresh_token = (request.get_json(silent=True) or {}).get("refresh_token")
+    if refresh_token:
+        try:
+            other = decode_token(str(refresh_token))
+            if other.get("sub") == get_jwt_identity():
+                jtis.add(other["jti"])
+        except Exception:
+            pass
+    for jti in jtis:
+        if not TokenBlocklist.query.filter_by(jti=jti).first():
+            db.session.add(TokenBlocklist(jti=jti))
     db.session.commit()
     return jsonify(ok=True)
 
@@ -90,8 +106,9 @@ def change_password(user):
     if len(new) < 10:
         raise ApiError(422, "Use at least 10 characters.", "new_password")
     user.set_password(new)
+    user.sign_out_everywhere()
     db.session.commit()
-    return jsonify(ok=True)
+    return jsonify(ok=True, **_tokens(user))
 
 
 @api.get("/branches")

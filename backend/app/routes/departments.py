@@ -130,6 +130,7 @@ def update_department(user, did):
     if not dep.active:
         for u in User.query.filter_by(department_id=dep.id, role="dept_leader"):
             u.active = False
+            u.sign_out_everywhere()
     audit(user, "Updated department", name)
     db.session.commit()
     return jsonify(department_out(dep))
@@ -230,6 +231,7 @@ def department_login(user, did):
     u.failed_logins = 0
     u.locked_until = None
     u.set_password(password)
+    u.sign_out_everywhere()
     if not existing:
         db.session.add(u)
     audit(user, "Issued department login", f"{dep.name} · {email}")

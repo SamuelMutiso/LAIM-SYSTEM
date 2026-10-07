@@ -2,6 +2,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_jwt_extended.exceptions import JWTExtendedException
+from flask_limiter.errors import RateLimitExceeded
 from jwt.exceptions import PyJWTError
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -25,14 +26,17 @@ def create_app(config=Config):
     cors.init_app(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
 
     from . import models
-    from .models import TokenBlocklist
+    from .models import TokenBlocklist, User
     from .routes import api
 
     app.register_blueprint(api)
 
     @jwt.token_in_blocklist_loader
     def revoked(_header, payload):
-        return db.session.query(TokenBlocklist.id).filter_by(jti=payload["jti"]).scalar() is not None
+        if db.session.query(TokenBlocklist.id).filter_by(jti=payload["jti"]).scalar() is not None:
+            return True
+        user = db.session.get(User, int(payload["sub"]))
+        return user is None or user.token_is_stale(int(payload.get("iat", 0)))
 
     @jwt.expired_token_loader
     def expired(_h, _p):
@@ -68,6 +72,16 @@ def create_app(config=Config):
     @app.errorhandler(PyJWTError)
     def jwt_error(_e):
         return jsonify(message="Please sign in."), 401
+
+    @app.errorhandler(RateLimitExceeded)
+    def too_many(_e):
+        if request.path == "/api/auth/login":
+            return jsonify(message="Too many wrong attempts. Wait 15 minutes and try again, or ask the office to reset your password."), 429
+        return jsonify(message="Too many requests. Please wait a minute and try again."), 429
+
+    @app.errorhandler(413)
+    def too_large(_e):
+        return jsonify(message="That request is too large."), 413
 
     @app.errorhandler(HTTPException)
     def http_error(e):
